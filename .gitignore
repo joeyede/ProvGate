@@ -12,3 +12,6 @@ DerivedData/
 
 # macOS
 .DS_Store
+
+# Local broker config (contains HiveMQ host — do not commit)
+ProvGate/Config.swift

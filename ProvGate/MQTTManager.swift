@@ -31,8 +31,6 @@ final class MQTTManager: NSObject {
     private static let maxReconnectAttempts = 5
     private static let connectionTimeoutSeconds = 10.0
 
-    @ObservationIgnored private let brokerHost = "3b62666a86a14b23956244c4308bad76.s1.eu.hivemq.cloud"
-    @ObservationIgnored private let brokerPort: UInt16 = 8884
     @ObservationIgnored private let controlTopic = "gate/control"
 
     override init() {
@@ -131,7 +129,7 @@ final class MQTTManager: NSObject {
     private func createClient(username: String, password: String) {
         let clientId = "gate_app_\(UUID().uuidString.prefix(8))"
         let socket = CocoaMQTTWebSocket(uri: "/mqtt")
-        let mqtt = CocoaMQTT5(clientID: clientId, host: brokerHost, port: brokerPort, socket: socket)
+        let mqtt = CocoaMQTT5(clientID: clientId, host: Config.brokerHost, port: Config.brokerPort, socket: socket)
         mqtt.username = username
         mqtt.password = password
         mqtt.enableSSL = true
