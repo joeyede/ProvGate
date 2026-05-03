@@ -159,10 +159,7 @@ final class MQTTManager: NSObject {
             try? await Task.sleep(for: .seconds(Self.connectionTimeoutSeconds))
             guard let self, connectionState == .connecting else { return }
             teardown()
-            connectionState = .disconnected
-            statusMessage = "Disconnected"
-            connectionError = "Connection timed out"
-            notify("Connection timed out")
+            scheduleReconnect()
         }
     }
 
