@@ -79,9 +79,10 @@ struct LoginView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
         .onAppear {
-            username = mqtt.savedUsername
-            password = mqtt.savedPassword
-            rememberMe = mqtt.savedRememberMe
+            let saved = mqtt.loadSavedCredentials()
+            username = saved.username
+            password = saved.password
+            rememberMe = saved.rememberMe
         }
     }
 

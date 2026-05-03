@@ -17,10 +17,6 @@ final class MQTTManager: NSObject {
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
 
-    // Pre-fill values exposed for LoginView
-    private(set) var savedUsername = ""
-    private(set) var savedPassword = ""
-    private(set) var savedRememberMe = false
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
@@ -39,6 +35,11 @@ final class MQTTManager: NSObject {
     }
 
     // MARK: - Public interface
+
+    func loadSavedCredentials() -> (username: String, password: String, rememberMe: Bool) {
+        let c = store.load()
+        return (c.username ?? "", c.password ?? "", c.rememberMe)
+    }
 
     func connect(username: String, password: String, rememberMe: Bool) {
         cancelReconnect()
@@ -61,9 +62,6 @@ final class MQTTManager: NSObject {
         connectionState = .disconnected
         statusMessage = "Disconnected"
         connectionError = nil
-        savedUsername = ""
-        savedPassword = ""
-        savedRememberMe = false
         notify("Logged out successfully")
     }
 
@@ -118,9 +116,6 @@ final class MQTTManager: NSObject {
 
     private func startup() {
         let creds = store.load()
-        savedUsername = creds.username ?? ""
-        savedPassword = creds.password ?? ""
-        savedRememberMe = creds.rememberMe
         if creds.rememberMe, let u = creds.username, let p = creds.password {
             connectionState = .connecting
             statusMessage = "Connecting..."
