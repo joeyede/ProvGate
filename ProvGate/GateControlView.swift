@@ -37,7 +37,7 @@ struct GateControlView: View {
                 Text("Gate Control")
                     .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(Color.accentColor)
-                Text("v\(appVersion)")
+                Text("v\(Bundle.main.appVersion)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -141,10 +141,6 @@ struct GateControlView: View {
         case .connecting, .reconnecting: .yellow
         default:                      .red
         }
-    }
-
-    private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
     }
 
     private func capitalized(_ s: String) -> String {
