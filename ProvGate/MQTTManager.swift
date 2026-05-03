@@ -98,12 +98,13 @@ final class MQTTManager: NSObject {
 
     // Called from ContentView when app becomes active
     func handleAppBecameActive() {
-        guard connectionState == .disconnected else { return }
+        guard connectionState == .disconnected || connectionState == .reconnecting else { return }
         let creds = store.load()
         guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
         cancelReconnect()
+        teardown()
         connectionState = .connecting
-        statusMessage = "Reconnecting..."
+        statusMessage = "Connecting..."
         createClient(username: u, password: p)
     }
 
