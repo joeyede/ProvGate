@@ -96,6 +96,11 @@ final class MQTTManager: NSObject {
 
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
         statusMessage = "Sent: \(action)"
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(30))
+            self?.pendingCommands.removeValue(forKey: correlationId)
+        }
     }
 
     // Called from ContentView when app becomes active
