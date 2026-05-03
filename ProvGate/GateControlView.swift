@@ -74,14 +74,14 @@ struct GateControlView: View {
                             systemImage: "arrow.left",
                             label: "Left",
                             action: "left",
-                            indicator: mqtt.isInsideView ? "house" : "leaf",
+                            indicator: mqtt.isOutsideView ? "leaf" : "house",
                             mqtt: mqtt
                         )
                         GateButton(
                             systemImage: "arrow.right",
                             label: "Right",
                             action: "right",
-                            indicator: mqtt.isInsideView ? "house" : "leaf",
+                            indicator: mqtt.isOutsideView ? "leaf" : "house",
                             mqtt: mqtt
                         )
                     }
@@ -89,23 +89,23 @@ struct GateControlView: View {
                     // Inside / Outside toggle
                     HStack(spacing: 12) {
                         Image(systemName: "house")
-                            .foregroundStyle(mqtt.isInsideView ? Color.accentColor : .secondary)
+                            .foregroundStyle(!mqtt.isOutsideView ? Color.accentColor : .secondary)
                         Text("Inside")
                             .font(.subheadline.weight(.medium))
-                            .foregroundStyle(mqtt.isInsideView ? Color.accentColor : .secondary)
+                            .foregroundStyle(!mqtt.isOutsideView ? Color.accentColor : .secondary)
 
                         Toggle("", isOn: Binding(
-                            get: { !mqtt.isInsideView },
-                            set: { mqtt.isInsideView = !$0 }
+                            get: { mqtt.isOutsideView },
+                            set: { mqtt.isOutsideView = $0 }
                         ))
                         .tint(Color.accentColor)
                         .labelsHidden()
 
                         Text("Outside")
                             .font(.subheadline.weight(.medium))
-                            .foregroundStyle(!mqtt.isInsideView ? Color.accentColor : .secondary)
+                            .foregroundStyle(mqtt.isOutsideView ? Color.accentColor : .secondary)
                         Image(systemName: "leaf")
-                            .foregroundStyle(!mqtt.isInsideView ? Color.accentColor : .secondary)
+                            .foregroundStyle(mqtt.isOutsideView ? Color.accentColor : .secondary)
                     }
                 }
                 .padding(16) // The gray margin

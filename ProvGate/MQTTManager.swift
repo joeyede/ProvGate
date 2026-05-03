@@ -12,7 +12,7 @@ final class MQTTManager: NSObject {
     private(set) var connectionState: ConnectionState = .initializing
     private(set) var statusMessage = "Disconnected"
     private(set) var connectionError: String? = nil
-    var isInsideView = true
+    var isOutsideView = false
     private(set) var loadingAction: String? = nil
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
@@ -74,7 +74,7 @@ final class MQTTManager: NSObject {
 
         // Swap left/right when viewing from outside
         var actual = action
-        if (action == "left" || action == "right") && !isInsideView {
+        if (action == "left" || action == "right") && isOutsideView {
             actual = action == "left" ? "right" : "left"
         }
 
