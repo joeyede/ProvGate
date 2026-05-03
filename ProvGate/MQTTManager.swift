@@ -15,6 +15,7 @@ final class MQTTManager: NSObject {
     var isInsideView = true
     private(set) var loadingAction: String? = nil
     private(set) var notificationMessage: String? = nil
+    private(set) var gateStatus: String? = nil
 
     // Pre-fill values exposed for LoginView
     private(set) var savedUsername = ""
@@ -239,6 +240,12 @@ extension MQTTManager: CocoaMQTT5Delegate {
     }
 
     nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveMessage message: CocoaMQTT5Message, id: UInt16, publishData: MqttDecodePublish?) {
+        if message.topic == "gate/status" {
+            let status = message.string
+            Task { @MainActor [weak self] in self?.gateStatus = status }
+            return
+        }
+
         guard message.topic.hasPrefix("gate/responses/") else { return }
 
         guard let payload = message.string,
