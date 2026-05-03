@@ -16,7 +16,7 @@ struct GateControlView: View {
                     Circle()
                         .fill(statusDotColor)
                         .frame(width: 10, height: 10)
-                    Text(mqtt.statusMessage.isEmpty ? " " : capitalized(mqtt.statusMessage))
+                    Text(mqtt.statusMessage.isEmpty ? " " : mqtt.statusMessage.prefix(1).uppercased() + mqtt.statusMessage.dropFirst())
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -143,10 +143,6 @@ struct GateControlView: View {
         }
     }
 
-    private func capitalized(_ s: String) -> String {
-        guard let first = s.first else { return s }
-        return first.uppercased() + s.dropFirst()
-    }
 }
 
 // --- BUTTON COMPONENT ---
