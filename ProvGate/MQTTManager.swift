@@ -279,7 +279,8 @@ extension MQTTManager: CocoaMQTT5Delegate {
 
     nonisolated func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
         Task { @MainActor [weak self] in
-            guard let self, connectionState == .connected || connectionState == .connecting else { return }
+            guard let self, mqtt5 === client,
+                  connectionState == .connected || connectionState == .connecting else { return }
             sendingAction = nil
             scheduleReconnect()
         }
