@@ -1,0 +1,224 @@
+import Foundation
+import Observation
+import CocoaMQTT
+import CocoaMQTTWebSocket
+
+@Observable
+@MainActor
+final class MQTTManager: NSObject {
+
+    enum ConnectionState { case initializing, connecting, connected, disconnected }
+
+    private(set) var connectionState: ConnectionState = .initializing
+    private(set) var statusMessage = "Enter credentials"
+    var isInsideView = true
+    private(set) var loadingAction: String? = nil
+    private(set) var notificationMessage: String? = nil
+
+    // Pre-fill values exposed for LoginView
+    private(set) var savedUsername = ""
+    private(set) var savedPassword = ""
+    private(set) var savedRememberMe = false
+
+    @ObservationIgnored private var client: CocoaMQTT5?
+    @ObservationIgnored private var pendingCommands: [String: String] = [:]
+    @ObservationIgnored private let store = CredentialsStore()
+
+    @ObservationIgnored private let brokerHost = "3b62666a86a14b23956244c4308bad76.s1.eu.hivemq.cloud"
+    @ObservationIgnored private let brokerPort: UInt16 = 8884
+    @ObservationIgnored private let controlTopic = "gate/control"
+
+    override init() {
+        super.init()
+        startup()
+    }
+
+    // MARK: - Public interface
+
+    func connect(username: String, password: String, rememberMe: Bool) {
+        teardown()
+        connectionState = .connecting
+        statusMessage = "Connecting..."
+        if rememberMe {
+            store.save(username: username, password: password, rememberMe: true)
+        } else {
+            store.clear()
+        }
+        createClient(username: username, password: password)
+    }
+
+    func disconnect() {
+        teardown()
+        store.clear()
+        connectionState = .disconnected
+        statusMessage = "Enter credentials"
+        savedUsername = ""
+        savedPassword = ""
+        savedRememberMe = false
+        notify("Logged out successfully")
+    }
+
+    func sendCommand(_ action: String) {
+        guard let mqtt = client, connectionState == .connected else {
+            statusMessage = "Not connected"
+            notify("Not connected to MQTT")
+            return
+        }
+
+        // Swap left/right when viewing from outside
+        var actual = action
+        if (action == "left" || action == "right") && !isInsideView {
+            actual = action == "left" ? "right" : "left"
+        }
+
+        loadingAction = action
+
+        let correlationId = UUID().uuidString
+        pendingCommands[correlationId] = action
+
+        let msg = CocoaMQTT5Message(topic: controlTopic, string: "{\"action\":\"\(actual)\"}", qos: .qos1)
+        let props = MqttPublishProperties()
+        props.messageExpiryInterval = 60
+        props.responseTopic = "gate/responses/\(mqtt.clientID)"
+        let corrBytes = Array(correlationId.utf8)
+        props.correlationData = [UInt8(corrBytes.count >> 8), UInt8(corrBytes.count & 0xFF)] + corrBytes
+
+        mqtt.publish(msg, DUP: false, retained: false, properties: props)
+        statusMessage = "Sent: \(action)"
+    }
+
+    // Called from ContentView when app becomes active
+    func handleAppBecameActive() {
+        guard connectionState == .disconnected else { return }
+        let creds = store.load()
+        guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
+        connectionState = .connecting
+        statusMessage = "Reconnecting..."
+        createClient(username: u, password: p)
+    }
+
+    // MARK: - Private
+
+    private func startup() {
+        let creds = store.load()
+        savedUsername = creds.username ?? ""
+        savedPassword = creds.password ?? ""
+        savedRememberMe = creds.rememberMe
+        if creds.rememberMe, let u = creds.username, let p = creds.password {
+            connectionState = .connecting
+            statusMessage = "Connecting..."
+            createClient(username: u, password: p)
+        } else {
+            connectionState = .disconnected
+        }
+    }
+
+    private func createClient(username: String, password: String) {
+        let clientId = "gate_app_\(UUID().uuidString.prefix(8))"
+        let socket = CocoaMQTTWebSocket(uri: "/mqtt")
+        let mqtt = CocoaMQTT5(clientID: clientId, host: brokerHost, port: brokerPort, socket: socket)
+        mqtt.username = username
+        mqtt.password = password
+        mqtt.enableSSL = true
+        mqtt.autoReconnect = false
+        mqtt.keepAlive = 30
+        mqtt.delegate = self
+
+        let cp = MqttConnectProperties()
+        cp.sessionExpiryInterval = 300
+        cp.receiveMaximum = 100
+        cp.maximumPacketSize = 1024
+        mqtt.connectProperties = cp
+
+        client = mqtt
+        _ = mqtt.connect()
+    }
+
+    private func teardown() {
+        client?.disconnect()
+        client = nil
+    }
+
+    nonisolated func notify(_ message: String) {
+        Task { @MainActor [weak self] in
+            self?.notificationMessage = message
+            try? await Task.sleep(for: .seconds(2.5))
+            if self?.notificationMessage == message {
+                self?.notificationMessage = nil
+            }
+        }
+    }
+}
+
+// MARK: - CocoaMQTT5Delegate
+
+extension MQTTManager: CocoaMQTT5Delegate {
+
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didConnectAck ack: CocoaMQTTCONNACKReasonCode, connAckData: MqttDecodeConnAck?) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if ack == .success {
+                connectionState = .connected
+                statusMessage = "Connected"
+                notify("Connected successfully")
+                mqtt5.subscribe("gate/status", qos: .qos1)
+                mqtt5.subscribe("gate/responses/#", qos: .qos1)
+            } else {
+                connectionState = .disconnected
+                let isBadCreds = ack == .badUsernameOrPassword || ack == .notAuthorized
+                statusMessage = isBadCreds
+                    ? "Connection failed: Invalid username or password"
+                    : "Connection failed"
+                notify("Connection failed")
+            }
+        }
+    }
+
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveMessage message: CocoaMQTT5Message, id: UInt16, publishData: MqttDecodePublish?) {
+        guard message.topic.hasPrefix("gate/responses/") else { return }
+
+        guard let payload = message.string,
+              let jsonData = payload.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+              let corrData = publishData?.correlationData,
+              let correlationId = String(bytes: corrData, encoding: .utf8)
+        else { return }
+
+        let success = (json["status"] as? String) == "success"
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let action = pendingCommands.removeValue(forKey: correlationId)
+            if let action { statusMessage = "\(action): \(success ? "Success" : "Failed")" }
+            loadingAction = nil
+        }
+    }
+
+    // Clear loading spinner when the broker ACKs the publish
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didPublishAck id: UInt16, pubAckData: MqttDecodePubAck?) {
+        Task { @MainActor [weak self] in self?.loadingAction = nil }
+    }
+
+    nonisolated func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
+        Task { @MainActor [weak self] in
+            guard let self, connectionState != .disconnected else { return }
+            connectionState = .disconnected
+            statusMessage = "Disconnected"
+            loadingAction = nil
+        }
+    }
+
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didPublishMessage message: CocoaMQTT5Message, id: UInt16) {}
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didPublishRec id: UInt16, pubRecData: MqttDecodePubRec?) {}
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didSubscribeTopics success: NSDictionary, failed: [String], subAckData: MqttDecodeSubAck?) {}
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didUnsubscribeTopics topics: [String], unsubAckData: MqttDecodeUnsubAck?) {}
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveDisconnectReasonCode reasonCode: CocoaMQTTDISCONNECTReasonCode) {}
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveAuthReasonCode reasonCode: CocoaMQTTAUTHReasonCode) {}
+    nonisolated func mqtt5DidPing(_ mqtt5: CocoaMQTT5) {}
+    nonisolated func mqtt5DidReceivePong(_ mqtt5: CocoaMQTT5) {}
+
+    // CocoaMQTT bug: if this optional method is not implemented the TLS completion
+    // handler is never called, causing error -1200 (NSURLErrorSecureConnectionFailed).
+    nonisolated func mqtt5UrlSession(_ mqtt: CocoaMQTT5, didReceiveTrust trust: SecTrust, didReceiveChallenge challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        completionHandler(.performDefaultHandling, nil)
+    }
+}

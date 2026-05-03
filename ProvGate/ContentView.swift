@@ -6,56 +6,65 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Environment(MQTTManager.self) private var mqtt
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        ZStack {
+            switch mqtt.connectionState {
+            case .initializing, .connecting:
+                ConnectingView()
+            case .disconnected:
+                LoginView()
+            case .connected:
+                GateControlView()
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            if let message = mqtt.notificationMessage {
+                VStack {
+                    Spacer()
+                    Text(message)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.black.opacity(0.8))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.bottom, 60)
+                }
+                .allowsHitTesting(false)
+                .transition(.opacity)
             }
+        }
+        .animation(.easeInOut(duration: 0.3), value: mqtt.notificationMessage != nil)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { mqtt.handleAppBecameActive() }
         }
     }
 }
 
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+private struct ConnectingView: View {
+    @Environment(MQTTManager.self) private var mqtt
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Gate Control")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundStyle(Color.accentColor)
+            ProgressView()
+                .scaleEffect(1.5)
+                .padding(.top, 8)
+            Text(mqtt.statusMessage)
+                .foregroundStyle(.secondary)
+            if mqtt.connectionState == .connecting {
+                Text("Restoring your session")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .italic()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
 }
