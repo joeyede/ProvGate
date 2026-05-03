@@ -7,7 +7,7 @@ import CocoaMQTTWebSocket
 @MainActor
 final class MQTTManager: NSObject {
 
-    enum ConnectionState { case initializing, connecting, connected, disconnected }
+    enum ConnectionState { case initializing, connecting, reconnecting, connected, disconnected }
 
     private(set) var connectionState: ConnectionState = .initializing
     private(set) var statusMessage = "Disconnected"
@@ -24,6 +24,11 @@ final class MQTTManager: NSObject {
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
     @ObservationIgnored private let store = CredentialsStore()
+    @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
+    @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored private var reconnectAttempt = 0
+    private static let maxReconnectAttempts = 5
+    private static let connectionTimeoutSeconds = 10.0
 
     @ObservationIgnored private let brokerHost = "3b62666a86a14b23956244c4308bad76.s1.eu.hivemq.cloud"
     @ObservationIgnored private let brokerPort: UInt16 = 8884
@@ -37,6 +42,7 @@ final class MQTTManager: NSObject {
     // MARK: - Public interface
 
     func connect(username: String, password: String, rememberMe: Bool) {
+        cancelReconnect()
         teardown()
         connectionState = .connecting
         statusMessage = "Connecting..."
@@ -50,6 +56,7 @@ final class MQTTManager: NSObject {
     }
 
     func disconnect() {
+        cancelReconnect()
         teardown()
         store.clear()
         connectionState = .disconnected
@@ -97,6 +104,7 @@ final class MQTTManager: NSObject {
         guard connectionState == .disconnected else { return }
         let creds = store.load()
         guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
+        cancelReconnect()
         connectionState = .connecting
         statusMessage = "Reconnecting..."
         createClient(username: u, password: p)
@@ -138,11 +146,50 @@ final class MQTTManager: NSObject {
 
         client = mqtt
         _ = mqtt.connect()
+
+        connectionTimeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.connectionTimeoutSeconds))
+            guard let self, connectionState == .connecting else { return }
+            teardown()
+            connectionState = .disconnected
+            statusMessage = "Disconnected"
+            connectionError = "Connection timed out"
+            notify("Connection timed out")
+        }
     }
 
     private func teardown() {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
         client?.disconnect()
         client = nil
+    }
+
+    private func cancelReconnect() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        reconnectAttempt = 0
+    }
+
+    private func scheduleReconnect() {
+        let creds = store.load()
+        guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
+        guard reconnectAttempt < Self.maxReconnectAttempts else {
+            connectionState = .disconnected
+            connectionError = "Could not reconnect — please log in again"
+            reconnectAttempt = 0
+            return
+        }
+        let delay = pow(2.0, Double(reconnectAttempt))   // 1, 2, 4, 8, 16 s
+        reconnectAttempt += 1
+        connectionState = .reconnecting
+        statusMessage = "Reconnecting..."
+        reconnectTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, connectionState == .reconnecting else { return }
+            connectionState = .connecting
+            createClient(username: u, password: p)
+        }
     }
 
     nonisolated func notify(_ message: String) {
@@ -169,7 +216,11 @@ extension MQTTManager: CocoaMQTT5Delegate {
     nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didConnectAck ack: CocoaMQTTCONNACKReasonCode, connAckData: MqttDecodeConnAck?) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            connectionTimeoutTask?.cancel()
+            connectionTimeoutTask = nil
             if ack == .success {
+                reconnectAttempt = 0
+                reconnectTask = nil
                 connectionState = .connected
                 statusMessage = "Connected"
                 notify("Connected successfully")
@@ -213,10 +264,9 @@ extension MQTTManager: CocoaMQTT5Delegate {
 
     nonisolated func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
         Task { @MainActor [weak self] in
-            guard let self, connectionState != .disconnected else { return }
-            connectionState = .disconnected
-            statusMessage = "Disconnected"
+            guard let self, connectionState == .connected || connectionState == .connecting else { return }
             loadingAction = nil
+            scheduleReconnect()
         }
     }
 

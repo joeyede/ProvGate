@@ -137,9 +137,9 @@ struct GateControlView: View {
 
     private var statusDotColor: Color {
         switch mqtt.connectionState {
-        case .connected:  .green
-        case .connecting: .yellow
-        default:          .red
+        case .connected:              .green
+        case .connecting, .reconnecting: .yellow
+        default:                      .red
         }
     }
 

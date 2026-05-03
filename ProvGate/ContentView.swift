@@ -18,7 +18,7 @@ struct ContentView: View {
                 ConnectingView()
             case .disconnected:
                 LoginView()
-            case .connected:
+            case .reconnecting, .connected:
                 GateControlView()
             }
 
