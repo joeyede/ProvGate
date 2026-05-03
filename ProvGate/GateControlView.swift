@@ -40,6 +40,11 @@ struct GateControlView: View {
                 Text("v\(Bundle.main.appVersion)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let status = mqtt.gateStatus {
+                    Text("Gate: \(status)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.bottom, 24)
 
@@ -124,7 +129,7 @@ struct GateControlView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
         .overlay {
-            if mqtt.loadingAction != nil {
+            if mqtt.sendingAction != nil {
                 ZStack {
                     Color(.systemBackground).opacity(0.5)
                         .ignoresSafeArea()
@@ -153,8 +158,8 @@ private struct GateButton: View {
     var indicator: String? = nil
     let mqtt: MQTTManager
 
-    private var isLoading: Bool { mqtt.loadingAction == action }
-    private var isDisabled: Bool { mqtt.loadingAction != nil }
+    private var isLoading: Bool { mqtt.sendingAction == action }
+    private var isDisabled: Bool { mqtt.sendingAction != nil }
 
     var body: some View {
         Button { mqtt.sendCommand(action) } label: {

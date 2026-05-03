@@ -13,7 +13,7 @@ final class MQTTManager: NSObject {
     private(set) var statusMessage = "Disconnected"
     private(set) var connectionError: String? = nil
     var isOutsideView = false
-    private(set) var loadingAction: String? = nil
+    private(set) var sendingAction: String? = nil
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
 
@@ -74,7 +74,7 @@ final class MQTTManager: NSObject {
 
         let actual = MQTTManager.resolvedAction(action, isOutsideView: isOutsideView)
 
-        loadingAction = action
+        sendingAction = action
 
         let correlationId = UUID().uuidString
         pendingCommands[correlationId] = action
@@ -177,8 +177,13 @@ final class MQTTManager: NSObject {
     }
 
     private func scheduleReconnect() {
+        teardown()
         let creds = store.load()
-        guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
+        guard creds.rememberMe, let u = creds.username, let p = creds.password else {
+            connectionState = .disconnected
+            statusMessage = "Disconnected"
+            return
+        }
         guard reconnectAttempt < Self.maxReconnectAttempts else {
             connectionState = .disconnected
             connectionError = "Could not reconnect — please log in again"
@@ -264,19 +269,17 @@ extension MQTTManager: CocoaMQTT5Delegate {
             guard let self else { return }
             let action = pendingCommands.removeValue(forKey: correlationId)
             if let action { statusMessage = "\(action): \(success ? "Success" : "Failed")" }
-            loadingAction = nil
         }
     }
 
-    // Clear loading spinner when the broker ACKs the publish
     nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didPublishAck id: UInt16, pubAckData: MqttDecodePubAck?) {
-        Task { @MainActor [weak self] in self?.loadingAction = nil }
+        Task { @MainActor [weak self] in self?.sendingAction = nil }
     }
 
     nonisolated func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
         Task { @MainActor [weak self] in
             guard let self, connectionState == .connected || connectionState == .connecting else { return }
-            loadingAction = nil
+            sendingAction = nil
             scheduleReconnect()
         }
     }
