@@ -10,7 +10,8 @@ final class MQTTManager: NSObject {
     enum ConnectionState { case initializing, connecting, connected, disconnected }
 
     private(set) var connectionState: ConnectionState = .initializing
-    private(set) var statusMessage = "Enter credentials"
+    private(set) var statusMessage = "Disconnected"
+    private(set) var connectionError: String? = nil
     var isInsideView = true
     private(set) var loadingAction: String? = nil
     private(set) var notificationMessage: String? = nil
@@ -39,6 +40,7 @@ final class MQTTManager: NSObject {
         teardown()
         connectionState = .connecting
         statusMessage = "Connecting..."
+        connectionError = nil
         if rememberMe {
             store.save(username: username, password: password, rememberMe: true)
         } else {
@@ -51,7 +53,8 @@ final class MQTTManager: NSObject {
         teardown()
         store.clear()
         connectionState = .disconnected
-        statusMessage = "Enter credentials"
+        statusMessage = "Disconnected"
+        connectionError = nil
         savedUsername = ""
         savedPassword = ""
         savedRememberMe = false
@@ -76,7 +79,9 @@ final class MQTTManager: NSObject {
         let correlationId = UUID().uuidString
         pendingCommands[correlationId] = action
 
-        let msg = CocoaMQTT5Message(topic: controlTopic, string: "{\"action\":\"\(actual)\"}", qos: .qos1)
+        guard let payload = try? JSONEncoder().encode(GateCommand(action: actual)),
+              let payloadString = String(data: payload, encoding: .utf8) else { return }
+        let msg = CocoaMQTT5Message(topic: controlTopic, string: payloadString, qos: .qos1)
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
         props.responseTopic = "gate/responses/\(mqtt.clientID)"
@@ -110,6 +115,7 @@ final class MQTTManager: NSObject {
             createClient(username: u, password: p)
         } else {
             connectionState = .disconnected
+            statusMessage = "Disconnected"
         }
     }
 
@@ -150,6 +156,12 @@ final class MQTTManager: NSObject {
     }
 }
 
+// MARK: - Models
+
+private struct GateCommand: Encodable {
+    let action: String
+}
+
 // MARK: - CocoaMQTT5Delegate
 
 extension MQTTManager: CocoaMQTT5Delegate {
@@ -165,9 +177,10 @@ extension MQTTManager: CocoaMQTT5Delegate {
                 mqtt5.subscribe("gate/responses/#", qos: .qos1)
             } else {
                 connectionState = .disconnected
+                statusMessage = "Disconnected"
                 let isBadCreds = ack == .badUsernameOrPassword || ack == .notAuthorized
-                statusMessage = isBadCreds
-                    ? "Connection failed: Invalid username or password"
+                connectionError = isBadCreds
+                    ? "Invalid username or password"
                     : "Connection failed"
                 notify("Connection failed")
             }

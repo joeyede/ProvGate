@@ -25,10 +25,10 @@ struct LoginView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if mqtt.statusMessage != "Enter credentials" {
-                Text(mqtt.statusMessage)
+            if let error = mqtt.connectionError {
+                Text(error)
                     .font(.subheadline)
-                    .foregroundStyle(mqtt.statusMessage.lowercased().contains("fail") ? .red : .secondary)
+                    .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
