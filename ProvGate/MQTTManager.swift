@@ -72,11 +72,7 @@ final class MQTTManager: NSObject {
             return
         }
 
-        // Swap left/right when viewing from outside
-        var actual = action
-        if (action == "left" || action == "right") && isOutsideView {
-            actual = action == "left" ? "right" : "left"
-        }
+        let actual = MQTTManager.resolvedAction(action, isOutsideView: isOutsideView)
 
         loadingAction = action
 
@@ -89,8 +85,7 @@ final class MQTTManager: NSObject {
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
         props.responseTopic = "gate/responses/\(mqtt.clientID)"
-        let corrBytes = Array(correlationId.utf8)
-        props.correlationData = [UInt8(corrBytes.count >> 8), UInt8(corrBytes.count & 0xFF)] + corrBytes
+        props.correlationData = MQTTManager.encodeCorrelationId(correlationId)
 
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
         statusMessage = "Sent: \(action)"
@@ -110,6 +105,20 @@ final class MQTTManager: NSObject {
         connectionState = .connecting
         statusMessage = "Reconnecting..."
         createClient(username: u, password: p)
+    }
+
+    // MARK: - Internal helpers (exposed for testing)
+
+    nonisolated static func resolvedAction(_ action: String, isOutsideView: Bool) -> String {
+        if (action == "left" || action == "right") && isOutsideView {
+            return action == "left" ? "right" : "left"
+        }
+        return action
+    }
+
+    nonisolated static func encodeCorrelationId(_ id: String) -> [UInt8] {
+        let bytes = Array(id.utf8)
+        return [UInt8(bytes.count >> 8), UInt8(bytes.count & 0xFF)] + bytes
     }
 
     // MARK: - Private
