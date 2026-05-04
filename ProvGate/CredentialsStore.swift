@@ -46,10 +46,16 @@ final class CredentialsStore {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
-        let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        // Include accessibility in the update so existing items are migrated too.
+        let updateAttrs: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+        ]
+        let status = SecItemUpdate(query as CFDictionary, updateAttrs as CFDictionary)
         if status == errSecItemNotFound {
             var addQuery = query
             addQuery[kSecValueData as String] = data
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             SecItemAdd(addQuery as CFDictionary, nil)
         }
     }
