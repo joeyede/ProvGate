@@ -158,7 +158,7 @@ final class MQTTManager: NSObject {
         mqtt.delegate = self
 
         let cp = MqttConnectProperties()
-        cp.sessionExpiryInterval = 300
+        cp.sessionExpiryInterval = 0
         cp.receiveMaximum = 100
         mqtt.connectProperties = cp
 
