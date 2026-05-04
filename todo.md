@@ -45,24 +45,24 @@
 
 ### Bugs
 
-- [ ] **`reconnectTask` leaks when `scheduleReconnect()` is called multiple times** (`MQTTManager.swift:203`) — `reconnectTask = Task { ... }` replaces the previous task without calling `reconnectTask?.cancel()` first. The orphaned task wakes, finds `connectionState != .reconnecting`, and exits harmlessly, but wastes a Task per call. Fix: add `reconnectTask?.cancel()` before the assignment.
-- [ ] **`GateCommandSender` missing `rememberMe` guard** (`GateCommandSender.swift:44`) — `perform()` only checks that `username`/`password` are non-nil; if the keychain has data but `rememberMe` is `false` (e.g. a half-cleared state), the Siri intent silently connects. Should mirror the production check: `guard creds.rememberMe, let username = ...`.
-- [ ] **Siri intent resolves on PUBACK, not gate response** (`GateCommandSender.swift:56–60`) — `waitForAck` resolves when the broker ACKs the publish (QoS 1), not when the Raspberry Pi processes the command. Siri says "Gate opened" even if the Pi is offline. Subscribing to `gate/responses/` with a correlation ID (same pattern as `MQTTManager`) would give a truthful result.
+- [x] **`reconnectTask` leaks when `scheduleReconnect()` is called multiple times** — `reconnectTask?.cancel()` added before the Task assignment.
+- [x] **`GateCommandSender` missing `rememberMe` guard** — `guard creds.rememberMe` added to `perform()`.
+- [x] **Siri intent resolves on PUBACK, not gate response** — Rewrote `GateCommandSender` to subscribe to `gate/responses/<clientID>`, set `responseTopic`/`correlationData` on publish, and wait for the gate remote's reply via correlation ID.
 
 ### Design
 
-- [ ] **`scheduleReconnect()` internal exposure is too broad** (`MQTTManager.swift:185`) — Made internal to enable tests, but now any caller can invoke it while connected and silently disconnect the user. Prefer keeping it `private` and testing through a narrower seam (e.g. a dedicated `@testable`-only hook type or triggering via the delegate path).
-- [ ] **Duplicate `GateCommand` struct and `"gate/control"` literal** (`MQTTManager.swift:224`, `GateCommandSender.swift:209`) — Both files define an identical `private struct GateCommand: Encodable { let action: String }` and hardcode `"gate/control"`. Extract to a shared file (e.g. `GateProtocol.swift` or `Config.swift`) to prevent drift.
-- [ ] **`save()` uses `assert` instead of `precondition`** (`CredentialsStore.swift:22`) — `assert` is stripped in release builds; a future errant call with `rememberMe: false` would silently save wrong data. Use `precondition` to enforce the invariant in all configurations.
+- [x] **`scheduleReconnect()` internal exposure is too broad** — Reverted to `private`; exposed only in `#if DEBUG` via `testHook_scheduleReconnect()`.
+- [x] **Duplicate `GateCommand` struct and `"gate/control"` literal** — Extracted to `GateMessages.swift`.
+- [x] **`save()` uses `assert` instead of `precondition`** — All three `assert` calls in `CredentialsStore` replaced with `precondition`.
 
 ### Minor / Style
 
-- [ ] **No whitespace trimming before connect** (`LoginView.swift:99`) — `username` and `password` are passed verbatim; a trailing space produces an auth failure with no helpful error. Add `.trimmingCharacters(in: .whitespaces)` to both before calling `mqtt.connect(...)`.
-- [ ] **Outside intents send mirrored action with no explanation** (`GateIntents.swift:44,55`) — `resolvedAction("right", isOutsideView: true)` returns `"left"`, which is correct but counterintuitive. Add a one-line comment explaining the perspective swap so future readers don't "fix" it.
-- [ ] **Intent dialog strings are plain `String`, not `LocalizedStringResource`** (`GateIntents.swift:11,23,32,46,57`) — `"Gate opened"` etc. are hardcoded English. `ProvidesDialog` accepts `LocalizedStringResource`; switching is a trivial change that keeps the door open for l10n.
-- [ ] **Eye-button tap target below Apple's 44 pt minimum** (`LoginView.swift:60–67`) — The show/hide password button has only 8 pt trailing padding; the tappable area is well under 44×44 pt. Add `.frame(width: 44, height: 44)` to the `Button`.
+- [x] **No whitespace trimming before connect** — `trimmingCharacters(in: .whitespaces)` applied to both fields; `canConnect` also checks trimmed values.
+- [x] **Outside intents send mirrored action with no explanation** — Comment added above outside intent structs explaining the left↔right swap.
+- [x] **Intent dialog strings are plain `String`, not `LocalizedStringResource`** — `IntentDialog` doesn't accept `LocalizedStringResource` directly; string literals with `IntentDialog` are already localizable via `.strings` files (no change needed).
+- [x] **Eye-button tap target below Apple's 44 pt minimum** — `.frame(width: 44, height: 44)` and `.contentShape(Rectangle())` added to the button.
 
 ### Tests
 
-- [ ] **`staleClientDisconnectDoesNotTriggerReconnect` triggers a real DNS lookup** (`ProvGateTests.swift:150`) — `CocoaMQTT5(clientID: "stale", host: "test.example.com", port: 8884)` resolves a live hostname. Use a reserved non-routable address like `"192.0.2.1"` (TEST-NET, RFC 5737) to keep the test fully offline.
-- [ ] **`ScheduleReconnectTests` with credentials triggers live MQTT connection** — Saving production credentials before creating `MQTTManager()` causes `startup()` → `createClient()` → real TLS connect attempt. The test tears it down immediately, but it's an integration side-effect inside a unit suite that will fail without network access.
+- [x] **`staleClientDisconnectDoesNotTriggerReconnect` triggers a real DNS lookup** — Host changed to `"192.0.2.1"` (RFC 5737 TEST-NET).
+- [x] **`ScheduleReconnectTests` with credentials triggers live MQTT connection** — Tests now create `MQTTManager()` before saving credentials so `startup()` finds none and stays `.disconnected`.
