@@ -8,14 +8,18 @@ struct Credentials {
 }
 
 final class CredentialsStore {
-    private let service = "ProvGate.MQTT"
+    private let service: String
     private let usernameAccount = "username"
     private let passwordAccount = "password"
-    private let rememberMeKey = "provgate.remember_me"
+    private var rememberMeKey: String { "\(service).remember_me" }
+
+    init(service: String = "ProvGate.MQTT") {
+        self.service = service
+    }
 
     // Only call with rememberMe: true. For the rememberMe=false case call clear() directly.
     func save(username: String, password: String, rememberMe: Bool) {
-        assert(rememberMe, "save() called with rememberMe=false; call clear() instead")
+        precondition(rememberMe, "save() called with rememberMe=false; call clear() instead")
         UserDefaults.standard.set(true, forKey: rememberMeKey)
         setKeychain(account: usernameAccount, value: username)
         setKeychain(account: passwordAccount, value: password)
@@ -54,9 +58,9 @@ final class CredentialsStore {
             addQuery[kSecValueData as String] = data
             addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            assert(addStatus == errSecSuccess, "Keychain add failed: \(addStatus)")
+            precondition(addStatus == errSecSuccess, "Keychain add failed: \(addStatus)")
         } else {
-            assert(status == errSecSuccess, "Keychain update failed: \(status)")
+            precondition(status == errSecSuccess, "Keychain update failed: \(status)")
         }
     }
 
