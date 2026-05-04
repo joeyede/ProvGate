@@ -29,8 +29,6 @@ final class MQTTManager: NSObject {
     static let maxReconnectAttempts = 5
     private static let connectionTimeoutSeconds = 10.0
 
-    @ObservationIgnored private let controlTopic = "gate/control"
-
     override init() {
         super.init()
         startup()
@@ -79,7 +77,7 @@ final class MQTTManager: NSObject {
 
         guard let payload = try? JSONEncoder().encode(GateCommand(action: actual)),
               let payloadString = String(data: payload, encoding: .utf8) else { return }
-        let msg = CocoaMQTT5Message(topic: controlTopic, string: payloadString, qos: .qos1)
+        let msg = CocoaMQTT5Message(topic: gateControlTopic, string: payloadString, qos: .qos1)
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
         props.responseTopic = "gate/responses/\(mqtt.clientID)"
@@ -223,12 +221,6 @@ final class MQTTManager: NSObject {
             }
         }
     }
-}
-
-// MARK: - Models
-
-private struct GateCommand: Encodable {
-    let action: String
 }
 
 // MARK: - CocoaMQTT5Delegate

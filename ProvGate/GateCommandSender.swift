@@ -138,7 +138,7 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
               let str = String(data: payload, encoding: .utf8) else {
             throw GateCommandError.connectionFailed
         }
-        let msg = CocoaMQTT5Message(topic: "gate/control", string: str, qos: .qos1)
+        let msg = CocoaMQTT5Message(topic: gateControlTopic, string: str, qos: .qos1)
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
         props.responseTopic = "gate/responses/\(clientID)"
@@ -257,8 +257,3 @@ extension GateCommandSender: CocoaMQTT5Delegate {
     nonisolated func mqtt5DidReceivePong(_ mqtt5: CocoaMQTT5) {}
 }
 
-// MARK: - Model
-
-private struct GateCommand: Encodable {
-    let action: String
-}
