@@ -38,11 +38,6 @@ final class MQTTManager: NSObject {
 
     // MARK: - Public interface
 
-    func loadSavedCredentials() -> (username: String, password: String, rememberMe: Bool) {
-        let c = store.load()
-        return (c.username ?? "", c.password ?? "", c.rememberMe)
-    }
-
     func connect(username: String, password: String, rememberMe: Bool) {
         cancelReconnect()
         teardown()
