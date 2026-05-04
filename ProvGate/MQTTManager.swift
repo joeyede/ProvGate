@@ -92,7 +92,9 @@ final class MQTTManager: NSObject {
 
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(30))
-            self?.pendingCommands.removeValue(forKey: correlationId)
+            guard let self else { return }
+            pendingCommands.removeValue(forKey: correlationId)
+            if sendingAction == action { sendingAction = nil }
         }
     }
 
