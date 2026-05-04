@@ -65,8 +65,9 @@ struct LoginView: View {
                     } label: {
                         Image(systemName: showPassword ? "eye.slash" : "eye")
                             .foregroundStyle(.secondary)
-                            .padding(.trailing, 8)
                     }
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
 
                 Toggle("Remember me", isOn: $rememberMe)
