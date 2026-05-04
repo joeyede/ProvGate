@@ -7,6 +7,8 @@ import SwiftUI
 
 struct GateControlView: View {
     @Environment(MQTTManager.self) private var mqtt
+    @State private var showDebugInfo = false
+    @State private var debugHideTask: Task<Void, Never>? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,15 +39,30 @@ struct GateControlView: View {
                 Text("Gate Control")
                     .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(Color.accentColor)
-                Text("v\(Bundle.main.appVersion)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let status = mqtt.gateStatus {
-                    Text("Gate: \(status)")
+                    .onLongPressGesture(minimumDuration: 0.6) {
+                        showDebugInfo.toggle()
+                        debugHideTask?.cancel()
+                        if showDebugInfo {
+                            debugHideTask = Task {
+                                try? await Task.sleep(for: .seconds(10))
+                                showDebugInfo = false
+                            }
+                        }
+                    }
+                if showDebugInfo {
+                    Text("\(Bundle.main.appVersion).\(Bundle.main.buildNumber)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .transition(.opacity)
+                    if let status = mqtt.gateStatus {
+                        Text(status)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .transition(.opacity)
+                    }
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: showDebugInfo)
             .padding(.bottom, 24)
 
             // --- THE CONTROL GRID ---
