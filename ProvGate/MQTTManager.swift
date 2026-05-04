@@ -182,7 +182,7 @@ final class MQTTManager: NSObject {
         reconnectAttempt = 0
     }
 
-    private func scheduleReconnect() {
+    func scheduleReconnect() {
         teardown()
         let creds = store.load()
         guard creds.rememberMe, let u = creds.username, let p = creds.password else {

@@ -95,6 +95,42 @@ struct CredentialSensitiveTests {
         }
     }
 
+    // MARK: scheduleReconnect backoff and state transitions
+
+    @MainActor
+    struct ScheduleReconnectTests {
+        init() { CredentialsStore().clear() }
+
+        @Test func noCredentialsGuardTransitionsToDisconnected() {
+            let manager = MQTTManager()
+            manager.scheduleReconnect()
+            #expect(manager.connectionState == .disconnected)
+            #expect(manager.statusMessage == "Disconnected")
+        }
+
+        @Test func firstCallGoesToReconnectingAndIncrementsAttempt() {
+            let store = CredentialsStore()
+            store.save(username: "u", password: "p", rememberMe: true)
+            let manager = MQTTManager()
+            manager.scheduleReconnect()
+            #expect(manager.connectionState == .reconnecting)
+            #expect(manager.reconnectAttempt == 1)
+            manager.disconnect()
+        }
+
+        @Test func exceedingMaxAttemptsTransitionsToDisconnectedWithError() {
+            let store = CredentialsStore()
+            store.save(username: "u", password: "p", rememberMe: true)
+            let manager = MQTTManager()
+            for _ in 0...MQTTManager.maxReconnectAttempts {
+                manager.scheduleReconnect()
+            }
+            #expect(manager.connectionState == .disconnected)
+            #expect(manager.connectionError != nil)
+            manager.disconnect()
+        }
+    }
+
     // MARK: Bug fix 1 — loadingAction → sendingAction rename
 
     @MainActor
