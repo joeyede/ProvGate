@@ -11,6 +11,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var rememberMe = false
     @State private var showPassword = false
+    @FocusState private var isFocusingPassword: Bool
 
     private var canConnect: Bool { !username.isEmpty && !password.isEmpty }
 
@@ -38,6 +39,8 @@ struct LoginView: View {
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .submitLabel(.next)
+                    .onSubmit { isFocusingPassword = true }
 
                 Group {
                     if showPassword {
@@ -49,6 +52,9 @@ struct LoginView: View {
                 .textFieldStyle(.roundedBorder)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .submitLabel(.go)
+                .onSubmit { if canConnect { handleConnect() } }
+                .focused($isFocusingPassword)
                 .overlay(alignment: .trailing) {
                     Button {
                         showPassword.toggle()
