@@ -12,7 +12,9 @@ final class MQTTManager: NSObject {
     private(set) var connectionState: ConnectionState = .initializing
     private(set) var statusMessage = "Disconnected"
     private(set) var connectionError: String? = nil
-    var isOutsideView = false
+    var isOutsideView: Bool = UserDefaults.standard.bool(forKey: "provgate.isOutsideView") {
+        didSet { UserDefaults.standard.set(isOutsideView, forKey: "provgate.isOutsideView") }
+    }
     private(set) var sendingAction: String? = nil
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
