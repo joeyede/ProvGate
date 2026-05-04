@@ -62,6 +62,7 @@ final class MQTTManager: NSObject {
         connectionState = .disconnected
         statusMessage = "Disconnected"
         connectionError = nil
+        sendingAction = nil
         notify("Logged out successfully")
     }
 
