@@ -172,6 +172,7 @@ final class MQTTManager: NSObject {
         connectionTimeoutTask = nil
         client?.disconnect()
         client = nil
+        pendingCommands.removeAll()
     }
 
     private func cancelReconnect() {
