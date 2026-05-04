@@ -120,6 +120,11 @@ final class MQTTManager: NSObject {
         return action
     }
 
+    // CocoaMQTT5 expects correlationData in MQTT5 Binary Data wire format:
+    // a 2-byte big-endian length prefix followed by the raw bytes. The library
+    // strips the prefix before delivering corrData to didReceiveMessage, so the
+    // production decode (String(bytes: corrData, encoding: .utf8)) receives only
+    // the UUID bytes.
     nonisolated static func encodeCorrelationId(_ id: String) -> [UInt8] {
         let bytes = Array(id.utf8)
         return [UInt8(bytes.count >> 8), UInt8(bytes.count & 0xFF)] + bytes

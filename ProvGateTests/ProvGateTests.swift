@@ -38,9 +38,21 @@ struct CorrelationIdTests {
     @Test func uuidRoundTrip() {
         let id = "123e4567-e89b-12d3-a456-426614174000"
         let encoded = MQTTManager.encodeCorrelationId(id)
-        // The broker strips the two-byte length prefix before delivering correlationData
+        // CocoaMQTT strips the 2-byte length prefix before delivering corrData,
+        // so the production decode receives only the raw UTF-8 bytes.
         let rawBytes = Array(encoded.dropFirst(2))
         let decoded = String(bytes: rawBytes, encoding: .utf8)
+        #expect(decoded == id)
+    }
+
+    // Exercises the exact decode path used in didReceiveMessage: String(bytes:encoding:)
+    // applied to corrData after CocoaMQTT strips the 2-byte prefix.
+    @Test func productionDecodePathRoundTrip() {
+        let id = UUID().uuidString
+        let encoded = MQTTManager.encodeCorrelationId(id)
+        // Simulate what CocoaMQTT delivers as corrData (prefix stripped)
+        let corrData = Array(encoded.dropFirst(2))
+        let decoded = String(bytes: corrData, encoding: .utf8)
         #expect(decoded == id)
     }
 }
