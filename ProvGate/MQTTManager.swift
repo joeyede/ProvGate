@@ -181,6 +181,8 @@ final class MQTTManager: NSObject {
     }
 
     private func scheduleReconnect() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
         teardown()
         let creds = store.load()
         guard creds.rememberMe, let u = creds.username, let p = creds.password else {
@@ -198,7 +200,6 @@ final class MQTTManager: NSObject {
         reconnectAttempt += 1
         connectionState = .reconnecting
         statusMessage = "Reconnecting..."
-        reconnectTask?.cancel()
         reconnectTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, connectionState == .reconnecting else { return }
