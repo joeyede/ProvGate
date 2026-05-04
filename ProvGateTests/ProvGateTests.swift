@@ -187,6 +187,25 @@ struct CredentialSensitiveTests {
         }
     }
 
+    // MARK: notify deduplication
+
+    @MainActor
+    struct NotifyTests {
+        init() { CredentialsStore().clear() }
+
+        // A second notification fired before the first expires should replace it,
+        // not leave the original message visible.
+        @Test func secondNotificationReplacesFirst() async {
+            let manager = MQTTManager()
+            manager.notify("first")
+            await Task.yield()
+            #expect(manager.notificationMessage == "first")
+            manager.notify("second")
+            await Task.yield()
+            #expect(manager.notificationMessage == "second")
+        }
+    }
+
     // MARK: Bug fix 3 — mqtt5DidDisconnect stale-client guard
 
     @MainActor
