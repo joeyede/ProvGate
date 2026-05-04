@@ -200,6 +200,7 @@ final class MQTTManager: NSObject {
         reconnectAttempt += 1
         connectionState = .reconnecting
         statusMessage = "Reconnecting..."
+        reconnectTask?.cancel()
         reconnectTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard let self, connectionState == .reconnecting else { return }
