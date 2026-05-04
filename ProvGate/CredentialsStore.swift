@@ -56,7 +56,10 @@ final class CredentialsStore {
             var addQuery = query
             addQuery[kSecValueData as String] = data
             addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            SecItemAdd(addQuery as CFDictionary, nil)
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            assert(addStatus == errSecSuccess, "Keychain add failed: \(addStatus)")
+        } else {
+            assert(status == errSecSuccess, "Keychain update failed: \(status)")
         }
     }
 
