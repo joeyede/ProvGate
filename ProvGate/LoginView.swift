@@ -16,6 +16,7 @@ struct LoginView: View {
     private var canConnect: Bool { !username.isEmpty && !password.isEmpty }
 
     var body: some View {
+        ScrollView {
         VStack(spacing: 24) {
             VStack(spacing: 4) {
                 Text("Gate Control")
@@ -82,6 +83,8 @@ struct LoginView: View {
             .padding(.horizontal, 20)
         }
         .padding()
+        .frame(maxWidth: .infinity)
+        } // ScrollView
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
         .onAppear {
