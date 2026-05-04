@@ -13,7 +13,10 @@ struct LoginView: View {
     @State private var showPassword = false
     @FocusState private var isFocusingPassword: Bool
 
-    private var canConnect: Bool { !username.isEmpty && !password.isEmpty }
+    private var canConnect: Bool {
+        !username.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !password.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         ScrollView {
@@ -96,7 +99,9 @@ struct LoginView: View {
     }
 
     private func handleConnect() {
-        mqtt.connect(username: username, password: password, rememberMe: rememberMe)
+        let u = username.trimmingCharacters(in: .whitespaces)
+        let p = password.trimmingCharacters(in: .whitespaces)
+        mqtt.connect(username: u, password: p, rememberMe: rememberMe)
     }
 
 }
