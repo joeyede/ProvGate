@@ -57,7 +57,15 @@ private struct ConnectingView: View {
                 .padding(.top, 8)
             Text(mqtt.statusMessage)
                 .foregroundStyle(.secondary)
-            if mqtt.connectionState == .connecting || mqtt.connectionState == .reconnecting {
+            if mqtt.connectionState == .reconnecting {
+                Text("Attempt \(mqtt.reconnectAttempt) of \(MQTTManager.maxReconnectAttempts)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Button("Cancel") { mqtt.disconnect() }
+                    .font(.subheadline)
+                    .padding(.top, 4)
+            } else if mqtt.connectionState == .connecting {
                 Text("Restoring your session")
                     .font(.caption)
                     .foregroundStyle(.secondary)

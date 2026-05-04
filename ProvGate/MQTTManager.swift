@@ -25,8 +25,8 @@ final class MQTTManager: NSObject {
     @ObservationIgnored private let store = CredentialsStore()
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
-    @ObservationIgnored private var reconnectAttempt = 0
-    private static let maxReconnectAttempts = 5
+    private(set) var reconnectAttempt = 0
+    static let maxReconnectAttempts = 5
     private static let connectionTimeoutSeconds = 10.0
 
     @ObservationIgnored private let controlTopic = "gate/control"
