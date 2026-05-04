@@ -35,6 +35,8 @@ struct OpenInsideLeftIntent: AppIntent {
 }
 
 // MARK: - Directional (outside perspective — left/right mirrored)
+// resolvedAction(isOutsideView: true) swaps left↔right so the physical
+// panel matches the user's perspective when standing outside the gate.
 
 struct OpenOutsideRightIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Outside Right"
