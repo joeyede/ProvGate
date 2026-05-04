@@ -193,5 +193,7 @@ private struct GateButton: View {
         .disabled(isDisabled)
         .aspectRatio(1, contentMode: .fit)
         .sensoryFeedback(.impact(weight: .medium), trigger: isLoading) { _, newValue in newValue }
+        .accessibilityLabel(label)
+        .accessibilityHint(isDisabled ? "Busy" : "")
     }
 }
