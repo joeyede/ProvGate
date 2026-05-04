@@ -191,6 +191,7 @@ private struct GateButton: View {
             .opacity(isLoading ? 0.7 : 1.0)
         }
         .disabled(isDisabled)
-        .aspectRatio(1, contentMode: .fit) // Force the square shape
+        .aspectRatio(1, contentMode: .fit)
+        .sensoryFeedback(.impact(weight: .medium), trigger: isLoading) { _, newValue in newValue }
     }
 }
