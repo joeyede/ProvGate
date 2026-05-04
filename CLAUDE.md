@@ -31,15 +31,17 @@ xcodebuild -project ProvGate.xcodeproj -scheme ProvGate -destination 'platform=i
 
 Dependencies are managed via Swift Package Manager (SPM) and resolved automatically on build.
 
+**Required before building:** copy `ProvGate/Config.swift.template` to `ProvGate/Config.swift` and fill in your HiveMQ Cloud host. `Config.swift` is git-ignored and must not be committed.
+
 ## Architecture
 
 `MQTTManager` is the single source of truth — a `@StateObject` created in `ProvGateApp` and injected as an `@EnvironmentObject` into every view.
 
-**State machine** (`ConnectionState`): `initializing → connecting → connected | disconnected`. `ContentView` switches between `ConnectingView`, `LoginView`, and `GateControlView` based on this state.
+**State machine** (`ConnectionState`): `initializing → connecting → connected | disconnected`; a dropped connection cycles through `reconnecting` before retrying. `ContentView` switches between `ConnectingView`, `LoginView`, and `GateControlView` based on this state.
 
 **MQTT connection**: Connects to HiveMQ Cloud over WebSocket + TLS (port 8884). On app launch, `startup()` checks `CredentialsStore`; if `rememberMe` is set it immediately starts connecting. `handleAppBecameActive()` re-connects on foreground if credentials are saved but state is `.disconnected`.
 
-**Gate commands**: `sendCommand(_:)` publishes JSON to `gate/control`. Left/right actions are swapped when `isInsideView = false` (outside perspective). Each command gets a UUID correlation ID embedded in MQTT5 publish properties (`responseTopic` + `correlationData`). Responses arrive on `gate/responses/<clientID>` and are matched back via `pendingCommands`.
+**Gate commands**: `sendCommand(_:)` publishes JSON to `gate/control`. Left/right actions are swapped when `isOutsideView = true` (outside perspective). Each command gets a UUID correlation ID embedded in MQTT5 publish properties (`responseTopic` + `correlationData`). Responses arrive on `gate/responses/<clientID>` and are matched back via `pendingCommands`.
 
 **Credentials**: `CredentialsStore` stores username/password in the iOS Keychain (`ProvGate.MQTT` service) and the `rememberMe` flag in `UserDefaults`.
 

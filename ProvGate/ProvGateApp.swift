@@ -1,15 +1,13 @@
-//
-//  ProvGateApp.swift
-//  ProvGate
-//
-//  Created by Joey Edelstein on 02/05/2026.
-//
-
 import SwiftUI
+import AppIntents
 
 @main
 struct ProvGateApp: App {
     @State private var mqtt = MQTTManager()
+
+    init() {
+        GateShortcuts.updateAppShortcutParameters()
+    }
 
     var body: some Scene {
         WindowGroup {

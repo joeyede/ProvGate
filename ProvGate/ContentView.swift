@@ -14,11 +14,11 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             switch mqtt.connectionState {
-            case .initializing, .connecting:
+            case .initializing, .connecting, .reconnecting:
                 ConnectingView()
             case .disconnected:
                 LoginView()
-            case .reconnecting, .connected:
+            case .connected:
                 GateControlView()
             }
 
@@ -57,7 +57,7 @@ private struct ConnectingView: View {
                 .padding(.top, 8)
             Text(mqtt.statusMessage)
                 .foregroundStyle(.secondary)
-            if mqtt.connectionState == .connecting {
+            if mqtt.connectionState == .connecting || mqtt.connectionState == .reconnecting {
                 Text("Restoring your session")
                     .font(.caption)
                     .foregroundStyle(.secondary)
