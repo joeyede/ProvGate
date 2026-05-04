@@ -13,15 +13,12 @@ final class CredentialsStore {
     private let passwordAccount = "password"
     private let rememberMeKey = "provgate.remember_me"
 
+    // Only call with rememberMe: true. For the rememberMe=false case call clear() directly.
     func save(username: String, password: String, rememberMe: Bool) {
-        UserDefaults.standard.set(rememberMe, forKey: rememberMeKey)
-        if rememberMe {
-            setKeychain(account: usernameAccount, value: username)
-            setKeychain(account: passwordAccount, value: password)
-        } else {
-            deleteKeychain(account: usernameAccount)
-            deleteKeychain(account: passwordAccount)
-        }
+        assert(rememberMe, "save() called with rememberMe=false; call clear() instead")
+        UserDefaults.standard.set(true, forKey: rememberMeKey)
+        setKeychain(account: usernameAccount, value: username)
+        setKeychain(account: passwordAccount, value: password)
     }
 
     func load() -> Credentials {
