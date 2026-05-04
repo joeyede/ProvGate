@@ -41,7 +41,7 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
 
     private func perform(action: String) async throws {
         let creds = store.load()
-        guard let username = creds.username, let password = creds.password else {
+        guard creds.rememberMe, let username = creds.username, let password = creds.password else {
             throw GateCommandError.noCredentials
         }
 
