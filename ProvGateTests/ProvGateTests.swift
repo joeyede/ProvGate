@@ -109,9 +109,11 @@ struct CredentialSensitiveTests {
         }
 
         @Test func firstCallGoesToReconnectingAndIncrementsAttempt() {
+            // Create manager first (no credentials → .disconnected, no live connection attempt),
+            // then save credentials so scheduleReconnect() finds them.
+            let manager = MQTTManager()
             let store = CredentialsStore()
             store.save(username: "u", password: "p", rememberMe: true)
-            let manager = MQTTManager()
             manager.testHook_scheduleReconnect()
             #expect(manager.connectionState == .reconnecting)
             #expect(manager.reconnectAttempt == 1)
@@ -119,9 +121,11 @@ struct CredentialSensitiveTests {
         }
 
         @Test func exceedingMaxAttemptsTransitionsToDisconnectedWithError() {
+            // Create manager first (no credentials → .disconnected, no live connection attempt),
+            // then save credentials so scheduleReconnect() finds them.
+            let manager = MQTTManager()
             let store = CredentialsStore()
             store.save(username: "u", password: "p", rememberMe: true)
-            let manager = MQTTManager()
             for _ in 0...MQTTManager.maxReconnectAttempts {
                 manager.testHook_scheduleReconnect()
             }
@@ -212,10 +216,11 @@ struct CredentialSensitiveTests {
     struct StaleDisconnectGuardTests {
         init() { CredentialsStore().clear() }
 
-        // client is nil after clean startup; mqtt5 === client is false for any non-nil instance
+        // client is nil after clean startup; mqtt5 === client is false for any non-nil instance.
+        // Uses 192.0.2.1 (RFC 5737 TEST-NET) to avoid real DNS lookups.
         @Test func staleClientDisconnectDoesNotTriggerReconnect() async throws {
             let manager = MQTTManager()
-            let stale = CocoaMQTT5(clientID: "stale", host: "test.example.com", port: 8884)
+            let stale = CocoaMQTT5(clientID: "stale", host: "192.0.2.1", port: 8884)
             manager.mqtt5DidDisconnect(stale, withError: nil)
             try await Task.sleep(for: .milliseconds(50))
             #expect(manager.connectionState == .disconnected)
