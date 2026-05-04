@@ -182,7 +182,7 @@ final class MQTTManager: NSObject {
         reconnectAttempt = 0
     }
 
-    func scheduleReconnect() {
+    private func scheduleReconnect() {
         teardown()
         let creds = store.load()
         guard creds.rememberMe, let u = creds.username, let p = creds.password else {
@@ -208,6 +208,11 @@ final class MQTTManager: NSObject {
             createClient(username: u, password: p)
         }
     }
+
+    #if DEBUG
+    /// For unit testing only — do not call from production code.
+    func testHook_scheduleReconnect() { scheduleReconnect() }
+    #endif
 
     nonisolated func notify(_ message: String) {
         Task { @MainActor [weak self] in
