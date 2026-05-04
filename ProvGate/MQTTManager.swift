@@ -160,7 +160,6 @@ final class MQTTManager: NSObject {
         let cp = MqttConnectProperties()
         cp.sessionExpiryInterval = 300
         cp.receiveMaximum = 100
-        cp.maximumPacketSize = 1024
         mqtt.connectProperties = cp
 
         client = mqtt
