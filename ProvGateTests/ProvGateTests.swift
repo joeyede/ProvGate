@@ -164,6 +164,27 @@ struct CredentialSensitiveTests {
             manager.handleAppBecameActive()
             #expect(manager.connectionState == .disconnected)
         }
+
+        // .disconnected + saved credentials → transitions to .connecting
+        @Test func withSavedCredentialsTransitionsToConnecting() {
+            let manager = MQTTManager()
+            #expect(manager.connectionState == .disconnected)
+            let store = CredentialsStore()
+            store.save(username: "u", password: "p", rememberMe: true)
+            manager.handleAppBecameActive()
+            #expect(manager.connectionState == .connecting)
+            manager.disconnect()
+        }
+
+        // .connecting → guard returns early, no state change
+        @Test func connectingStateIsNoOp() {
+            let manager = MQTTManager()
+            manager.connect(username: "u", password: "p", rememberMe: false)
+            #expect(manager.connectionState == .connecting)
+            manager.handleAppBecameActive()
+            #expect(manager.connectionState == .connecting)
+            manager.disconnect()
+        }
     }
 
     // MARK: Bug fix 3 — mqtt5DidDisconnect stale-client guard
