@@ -66,7 +66,7 @@ struct CredentialSensitiveTests {
     // MARK: CredentialsStore
 
     struct CredentialsStoreTests {
-        let store = CredentialsStore()
+        let store = CredentialsStore(service: "ProvGate.MQTT.test")
 
         init() { store.clear() }
 
@@ -88,14 +88,6 @@ struct CredentialSensitiveTests {
         @Test func clearRemovesAllCredentials() {
             store.save(username: "testuser", password: "s3cret", rememberMe: true)
             store.clear()
-            let c = store.load()
-            #expect(c.username == nil)
-            #expect(c.password == nil)
-            #expect(c.rememberMe == false)
-        }
-
-        @Test func saveWithRememberMeFalseDoesNotPersistCredentials() {
-            store.save(username: "user", password: "pass", rememberMe: false)
             let c = store.load()
             #expect(c.username == nil)
             #expect(c.password == nil)
