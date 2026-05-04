@@ -59,13 +59,13 @@ struct GateControlView: View {
                             systemImage: "figure.walk",
                             label: "Pedestrian",
                             action: "pedestrian",
-                            mqtt: mqtt
+
                         )
                         GateButton(
                             systemImage: "arrow.up.left.and.arrow.down.right",
                             label: "Full Open",
                             action: "full",
-                            mqtt: mqtt
+
                         )
                     }
                 }
@@ -80,14 +80,14 @@ struct GateControlView: View {
                             label: "Left",
                             action: "left",
                             indicator: mqtt.isOutsideView ? "leaf" : "house",
-                            mqtt: mqtt
+
                         )
                         GateButton(
                             systemImage: "arrow.right",
                             label: "Right",
                             action: "right",
                             indicator: mqtt.isOutsideView ? "leaf" : "house",
-                            mqtt: mqtt
+
                         )
                     }
 
@@ -156,7 +156,7 @@ private struct GateButton: View {
     let label: String
     let action: String
     var indicator: String? = nil
-    let mqtt: MQTTManager
+    @Environment(MQTTManager.self) private var mqtt
 
     private var isLoading: Bool { mqtt.sendingAction == action }
     private var isDisabled: Bool { mqtt.sendingAction != nil }
