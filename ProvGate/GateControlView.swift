@@ -16,7 +16,7 @@ struct GateControlView: View {
                     Circle()
                         .fill(statusDotColor)
                         .frame(width: 10, height: 10)
-                    Text(mqtt.statusMessage.isEmpty ? " " : mqtt.statusMessage.prefix(1).uppercased() + mqtt.statusMessage.dropFirst())
+                    Text(mqtt.statusMessage.isEmpty ? " " : mqtt.statusMessage)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

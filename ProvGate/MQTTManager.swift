@@ -91,7 +91,7 @@ final class MQTTManager: NSObject {
         props.correlationData = MQTTManager.encodeCorrelationId(correlationId)
 
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
-        statusMessage = "Sent: \(action)"
+        statusMessage = "Sent: \(action.capitalized)"
 
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(30))
@@ -279,7 +279,7 @@ extension MQTTManager: CocoaMQTT5Delegate {
         Task { @MainActor [weak self] in
             guard let self else { return }
             let action = pendingCommands.removeValue(forKey: correlationId)
-            if let action { statusMessage = "\(action): \(success ? "Success" : "Failed")" }
+            if let action { statusMessage = "\(action.capitalized): \(success ? "Success" : "Failed")" }
         }
     }
 
