@@ -22,13 +22,15 @@ final class MQTTManager: NSObject {
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
-    @ObservationIgnored private let store = CredentialsStore(keychainAccessGroup: appGroup, userDefaultsSuite: appGroup)
+    @ObservationIgnored private let store = CredentialsStore(
+        keychainAccessGroup: GateHelpers.appGroup,
+        userDefaultsSuite: GateHelpers.appGroup
+    )
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private(set) var reconnectAttempt = 0
     static let maxReconnectAttempts = 5
     private static let connectionTimeoutSeconds = 10.0
-    private static let appGroup = "group.BitChor.ProvGate"
 
     override init() {
         super.init()
@@ -119,17 +121,7 @@ final class MQTTManager: NSObject {
 
     // MARK: - Private
 
-    private func migrateCredentialsIfNeeded() {
-        guard !store.load().rememberMe else { return }
-        let old = CredentialsStore()
-        let creds = old.load()
-        guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
-        store.save(username: u, password: p, rememberMe: true)
-        old.clear()
-    }
-
     private func startup() {
-        migrateCredentialsIfNeeded()
         let creds = store.load()
         if creds.rememberMe, let u = creds.username, let p = creds.password {
             connectionState = .connecting

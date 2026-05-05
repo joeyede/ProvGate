@@ -1,6 +1,9 @@
 import Foundation
 
 enum GateHelpers {
+    // Shared by the main app and the GateWidget extension for keychain + UserDefaults sharing.
+    static let appGroup = "group.BitChor.ProvGate"
+
     // Swaps left↔right when the user is viewing the gate from outside.
     nonisolated static func resolvedAction(_ action: String, isOutsideView: Bool) -> String {
         if (action == "left" || action == "right") && isOutsideView {

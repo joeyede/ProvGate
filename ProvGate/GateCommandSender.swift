@@ -20,7 +20,10 @@ enum GateCommandError: LocalizedError {
 /// Creates a fresh connection per invocation — no shared state with the main app session.
 final class GateCommandSender: NSObject, @unchecked Sendable {
 
-    private let store = CredentialsStore(keychainAccessGroup: "group.BitChor.ProvGate", userDefaultsSuite: "group.BitChor.ProvGate")
+    private let store = CredentialsStore(
+        keychainAccessGroup: GateHelpers.appGroup,
+        userDefaultsSuite: GateHelpers.appGroup
+    )
     private var client: CocoaMQTT5?
     private var clientID = ""
 
