@@ -20,7 +20,7 @@ enum GateCommandError: LocalizedError {
 /// Creates a fresh connection per invocation — no shared state with the main app session.
 final class GateCommandSender: NSObject, @unchecked Sendable {
 
-    private let store = CredentialsStore()
+    private let store = CredentialsStore(keychainAccessGroup: "group.BitChor.ProvGate", userDefaultsSuite: "group.BitChor.ProvGate")
     private var client: CocoaMQTT5?
     private var clientID = ""
 
@@ -142,7 +142,7 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
         props.responseTopic = "gate/responses/\(clientID)"
-        props.correlationData = MQTTManager.encodeCorrelationId(correlationId)
+        props.correlationData = GateHelpers.encodeCorrelationId(correlationId)
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
     }
 

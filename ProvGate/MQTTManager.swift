@@ -22,12 +22,13 @@ final class MQTTManager: NSObject {
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
-    @ObservationIgnored private let store = CredentialsStore()
+    @ObservationIgnored private let store = CredentialsStore(keychainAccessGroup: appGroup, userDefaultsSuite: appGroup)
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private(set) var reconnectAttempt = 0
     static let maxReconnectAttempts = 5
     private static let connectionTimeoutSeconds = 10.0
+    private static let appGroup = "group.BitChor.ProvGate"
 
     override init() {
         super.init()
@@ -68,7 +69,7 @@ final class MQTTManager: NSObject {
             return
         }
 
-        let actual = MQTTManager.resolvedAction(action, isOutsideView: isOutsideView)
+        let actual = GateHelpers.resolvedAction(action, isOutsideView: isOutsideView)
 
         sendingAction = action
 
@@ -81,7 +82,7 @@ final class MQTTManager: NSObject {
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
         props.responseTopic = "gate/responses/\(mqtt.clientID)"
-        props.correlationData = MQTTManager.encodeCorrelationId(correlationId)
+        props.correlationData = GateHelpers.encodeCorrelationId(correlationId)
 
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
         statusMessage = "Sent: \(action.capitalized)"
@@ -109,25 +110,26 @@ final class MQTTManager: NSObject {
     // MARK: - Internal helpers (exposed for testing)
 
     nonisolated static func resolvedAction(_ action: String, isOutsideView: Bool) -> String {
-        if (action == "left" || action == "right") && isOutsideView {
-            return action == "left" ? "right" : "left"
-        }
-        return action
+        GateHelpers.resolvedAction(action, isOutsideView: isOutsideView)
     }
 
-    // CocoaMQTT5 expects correlationData in MQTT5 Binary Data wire format:
-    // a 2-byte big-endian length prefix followed by the raw bytes. The library
-    // strips the prefix before delivering corrData to didReceiveMessage, so the
-    // production decode (String(bytes: corrData, encoding: .utf8)) receives only
-    // the UUID bytes.
     nonisolated static func encodeCorrelationId(_ id: String) -> [UInt8] {
-        let bytes = Array(id.utf8)
-        return [UInt8(bytes.count >> 8), UInt8(bytes.count & 0xFF)] + bytes
+        GateHelpers.encodeCorrelationId(id)
     }
 
     // MARK: - Private
 
+    private func migrateCredentialsIfNeeded() {
+        guard !store.load().rememberMe else { return }
+        let old = CredentialsStore()
+        let creds = old.load()
+        guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
+        store.save(username: u, password: p, rememberMe: true)
+        old.clear()
+    }
+
     private func startup() {
+        migrateCredentialsIfNeeded()
         let creds = store.load()
         if creds.rememberMe, let u = creds.username, let p = creds.password {
             connectionState = .connecting

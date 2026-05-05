@@ -9,6 +9,15 @@
 /* Begin PBXBuildFile section */
 		7F4BF68C2FA6C03400D8F879 /* CocoaMQTT in Frameworks */ = {isa = PBXBuildFile; productRef = 7F4BF68B2FA6C03400D8F879 /* CocoaMQTT */; };
 		7F4BF68E2FA6C03400D8F879 /* CocoaMQTTWebSocket in Frameworks */ = {isa = PBXBuildFile; productRef = 7F4BF68D2FA6C03400D8F879 /* CocoaMQTTWebSocket */; };
+		AF59B1D3814648A2BAA1AC4C /* CocoaMQTT in Frameworks */ = {isa = PBXBuildFile; productRef = 909A29880AC944F0BCD06944 /* CocoaMQTT */; };
+		3BB7C1AD285E4390B05EB890 /* CocoaMQTTWebSocket in Frameworks */ = {isa = PBXBuildFile; productRef = 3FE125A997B14BD1954365BA /* CocoaMQTTWebSocket */; };
+		FF0282AE72094147BEAECA44 /* GateWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A702ECC60EDC40ED8CB8CE89 /* GateWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D967A40E579541BE8B93510E /* GateIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B49DC41163452E99090B69 /* GateIntents.swift */; };
+		0EA455DCE0EE40E4B06ABD34 /* GateCommandSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5651E8039E444EC492623848 /* GateCommandSender.swift */; };
+		EA4F79C59F0A4405A217F177 /* CredentialsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64158B1AF00F46BEAD49EAE8 /* CredentialsStore.swift */; };
+		7D7B9D2F202D4CC5AD849E4E /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7DBE02D93B412A8126D5FD /* Config.swift */; };
+		A47FB15D7A6B4A3D86E78E0B /* GateHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C8AA864884402DB2E4DD18 /* GateHelpers.swift */; };
+		47F42E738B324CA6BA3C139D /* GateMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D8AC5CBF8A847E08C30DEE5 /* GateMessages.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -26,12 +35,40 @@
 			remoteGlobalIDString = 7F9B35262FA6AA0B009699B0;
 			remoteInfo = ProvGate;
 		};
+		A2A3BB992DA54213B2332FB1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7F9B351F2FA6AA0B009699B0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5E65439A2EA040219B8786EE;
+			remoteInfo = GateWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0CAD94775DA046D288B120B0 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FF0282AE72094147BEAECA44 /* GateWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7F9B35272FA6AA0B009699B0 /* ProvGate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProvGate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F9B35362FA6AA0C009699B0 /* ProvGateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProvGateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F9B35402FA6AA0C009699B0 /* ProvGateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProvGateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A702ECC60EDC40ED8CB8CE89 /* GateWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GateWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		21B49DC41163452E99090B69 /* GateIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GateIntents.swift; path = ProvGate/GateIntents.swift; sourceTree = "<group>"; };
+		5651E8039E444EC492623848 /* GateCommandSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GateCommandSender.swift; path = ProvGate/GateCommandSender.swift; sourceTree = "<group>"; };
+		64158B1AF00F46BEAD49EAE8 /* CredentialsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CredentialsStore.swift; path = ProvGate/CredentialsStore.swift; sourceTree = "<group>"; };
+		6B7DBE02D93B412A8126D5FD /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Config.swift; path = ProvGate/Config.swift; sourceTree = "<group>"; };
+		98C8AA864884402DB2E4DD18 /* GateHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GateHelpers.swift; path = ProvGate/GateHelpers.swift; sourceTree = "<group>"; };
+		3D8AC5CBF8A847E08C30DEE5 /* GateMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GateMessages.swift; path = ProvGate/GateMessages.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +86,22 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ProvGateUITests;
 			sourceTree = "<group>";
+		};
+		A9BC29FF64DC45EBB3A16436 /* GateWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				51BDB3A6E52B444187E7B075 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			path = GateWidget;
+			sourceTree = "<group>";
+		};
+		51BDB3A6E52B444187E7B075 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				GateWidget.entitlements,
+				Info.plist,
+			);
+			target = 5E65439A2EA040219B8786EE /* GateWidget */;
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -76,29 +129,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		A200E7F9B85246BB809960AD /* Increment Build Number */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
+		20271AC1547F4FEC8B5B1B67 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Increment Build Number";
-			outputFileListPaths = (
-			);
-			outputPaths = (
+				3BB7C1AD285E4390B05EB890 /* CocoaMQTTWebSocket in Frameworks */,
+				AF59B1D3814648A2BAA1AC4C /* CocoaMQTT in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "BUILD_NUM_FILE=\"${SRCROOT}/BuildNumber.txt\"\nif [ ! -f \"$BUILD_NUM_FILE\" ]; then\n    echo \"1\" > \"$BUILD_NUM_FILE\"\nfi\nBUILD_NUM=$(cat \"$BUILD_NUM_FILE\")\nBUILD_NUM=$((BUILD_NUM + 1))\nprintf '%s' \"$BUILD_NUM\" > \"$BUILD_NUM_FILE\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUM\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n";
 		};
-/* End PBXShellScriptBuildPhase section */
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		7F9B351E2FA6AA0B009699B0 = {
@@ -107,6 +147,7 @@
 				7F9B35292FA6AA0B009699B0 /* ProvGate */,
 				7F9B35392FA6AA0C009699B0 /* ProvGateTests */,
 				7F9B35432FA6AA0C009699B0 /* ProvGateUITests */,
+				A9BC29FF64DC45EBB3A16436 /* GateWidget */,
 				7F9B35282FA6AA0B009699B0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,6 +158,7 @@
 				7F9B35272FA6AA0B009699B0 /* ProvGate.app */,
 				7F9B35362FA6AA0C009699B0 /* ProvGateTests.xctest */,
 				7F9B35402FA6AA0C009699B0 /* ProvGateUITests.xctest */,
+				A702ECC60EDC40ED8CB8CE89 /* GateWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,10 +174,12 @@
 				7F9B35242FA6AA0B009699B0 /* Frameworks */,
 				7F9B35252FA6AA0B009699B0 /* Resources */,
 				A200E7F9B85246BB809960AD /* Increment Build Number */,
+				0CAD94775DA046D288B120B0 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F4F941F4F49C46A0BC7F9295 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7F9B35292FA6AA0B009699B0 /* ProvGate */,
@@ -195,6 +239,30 @@
 			productReference = 7F9B35402FA6AA0C009699B0 /* ProvGateUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		5E65439A2EA040219B8786EE /* GateWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBAB5B6AFFB1411AB6556C45 /* Build configuration list for PBXNativeTarget "GateWidget" */;
+			buildPhases = (
+				41E511E3263346B2AB3047C6 /* Sources */,
+				20271AC1547F4FEC8B5B1B67 /* Frameworks */,
+				B0967B4B375641F39595F735 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A9BC29FF64DC45EBB3A16436 /* GateWidget */,
+			);
+			name = GateWidget;
+			packageProductDependencies = (
+				909A29880AC944F0BCD06944 /* CocoaMQTT */,
+				3FE125A997B14BD1954365BA /* CocoaMQTTWebSocket */,
+			);
+			productName = GateWidget;
+			productReference = A702ECC60EDC40ED8CB8CE89 /* GateWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -215,6 +283,9 @@
 					7F9B353F2FA6AA0C009699B0 = {
 						CreatedOnToolsVersion = 26.4.1;
 						TestTargetID = 7F9B35262FA6AA0B009699B0;
+					};
+					5E65439A2EA040219B8786EE = {
+						CreatedOnToolsVersion = 26.4.1;
 					};
 				};
 			};
@@ -238,6 +309,7 @@
 				7F9B35262FA6AA0B009699B0 /* ProvGate */,
 				7F9B35352FA6AA0C009699B0 /* ProvGateTests */,
 				7F9B353F2FA6AA0C009699B0 /* ProvGateUITests */,
+				5E65439A2EA040219B8786EE /* GateWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -264,7 +336,36 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B0967B4B375641F39595F735 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A200E7F9B85246BB809960AD /* Increment Build Number */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Increment Build Number";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "BUILD_NUM_FILE=\"${SRCROOT}/BuildNumber.txt\"\nif [ ! -f \"$BUILD_NUM_FILE\" ]; then\n    echo \"1\" > \"$BUILD_NUM_FILE\"\nfi\nBUILD_NUM=$(cat \"$BUILD_NUM_FILE\")\nBUILD_NUM=$((BUILD_NUM + 1))\nprintf '%s' \"$BUILD_NUM\" > \"$BUILD_NUM_FILE\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUM\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7F9B35232FA6AA0B009699B0 /* Sources */ = {
@@ -288,6 +389,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		41E511E3263346B2AB3047C6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D967A40E579541BE8B93510E /* GateIntents.swift in Sources */,
+				0EA455DCE0EE40E4B06ABD34 /* GateCommandSender.swift in Sources */,
+				EA4F79C59F0A4405A217F177 /* CredentialsStore.swift in Sources */,
+				7D7B9D2F202D4CC5AD849E4E /* Config.swift in Sources */,
+				A47FB15D7A6B4A3D86E78E0B /* GateHelpers.swift in Sources */,
+				47F42E738B324CA6BA3C139D /* GateMessages.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -300,6 +414,11 @@
 			isa = PBXTargetDependency;
 			target = 7F9B35262FA6AA0B009699B0 /* ProvGate */;
 			targetProxy = 7F9B35412FA6AA0C009699B0 /* PBXContainerItemProxy */;
+		};
+		F4F941F4F49C46A0BC7F9295 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5E65439A2EA040219B8786EE /* GateWidget */;
+			targetProxy = A2A3BB992DA54213B2332FB1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -428,6 +547,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ProvGate/ProvGate.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PGB43S2497;
@@ -446,6 +567,7 @@
 				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = BitChor.ProvGate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -461,6 +583,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ProvGate/ProvGate.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PGB43S2497;
@@ -479,6 +603,7 @@
 				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = BitChor.ProvGate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -569,6 +694,68 @@
 			};
 			name = Release;
 		};
+		157BC7495B154E459B11EAA9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GateWidget/GateWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PGB43S2497;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GateWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = GateWidget;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = BitChor.ProvGate.GateWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		146FABE246E74BA2A4D4DC0E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = GateWidget/GateWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PGB43S2497;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GateWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = GateWidget;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = BitChor.ProvGate.GateWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -608,6 +795,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		FBAB5B6AFFB1411AB6556C45 /* Build configuration list for PBXNativeTarget "GateWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				157BC7495B154E459B11EAA9 /* Debug */,
+				146FABE246E74BA2A4D4DC0E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -628,6 +824,16 @@
 			productName = CocoaMQTT;
 		};
 		7F4BF68D2FA6C03400D8F879 /* CocoaMQTTWebSocket */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7F4BF68A2FA6C03400D8F879 /* XCRemoteSwiftPackageReference "CocoaMQTT" */;
+			productName = CocoaMQTTWebSocket;
+		};
+		909A29880AC944F0BCD06944 /* CocoaMQTT */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7F4BF68A2FA6C03400D8F879 /* XCRemoteSwiftPackageReference "CocoaMQTT" */;
+			productName = CocoaMQTT;
+		};
+		3FE125A997B14BD1954365BA /* CocoaMQTTWebSocket */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 7F4BF68A2FA6C03400D8F879 /* XCRemoteSwiftPackageReference "CocoaMQTT" */;
 			productName = CocoaMQTTWebSocket;

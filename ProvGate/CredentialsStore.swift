@@ -9,24 +9,28 @@ struct Credentials {
 
 final class CredentialsStore {
     private let service: String
+    private let keychainAccessGroup: String?
+    private let defaults: UserDefaults
     private let usernameAccount = "username"
     private let passwordAccount = "password"
     private var rememberMeKey: String { "\(service).remember_me" }
 
-    init(service: String = "ProvGate.MQTT") {
+    init(service: String = "ProvGate.MQTT", keychainAccessGroup: String? = nil, userDefaultsSuite: String? = nil) {
         self.service = service
+        self.keychainAccessGroup = keychainAccessGroup
+        self.defaults = userDefaultsSuite.flatMap { UserDefaults(suiteName: $0) } ?? .standard
     }
 
     // Only call with rememberMe: true. For the rememberMe=false case call clear() directly.
     func save(username: String, password: String, rememberMe: Bool) {
         precondition(rememberMe, "save() called with rememberMe=false; call clear() instead")
-        UserDefaults.standard.set(true, forKey: rememberMeKey)
+        defaults.set(true, forKey: rememberMeKey)
         setKeychain(account: usernameAccount, value: username)
         setKeychain(account: passwordAccount, value: password)
     }
 
     func load() -> Credentials {
-        let rememberMe = UserDefaults.standard.bool(forKey: rememberMeKey)
+        let rememberMe = defaults.bool(forKey: rememberMeKey)
         return Credentials(
             username: getKeychain(account: usernameAccount),
             password: getKeychain(account: passwordAccount),
@@ -35,19 +39,26 @@ final class CredentialsStore {
     }
 
     func clear() {
-        UserDefaults.standard.removeObject(forKey: rememberMeKey)
+        defaults.removeObject(forKey: rememberMeKey)
         deleteKeychain(account: usernameAccount)
         deleteKeychain(account: passwordAccount)
     }
 
-    private func setKeychain(account: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
-        let query: [String: Any] = [
+    private func baseQuery(account: String) -> [String: Any] {
+        var q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
-        // Include accessibility in the update so existing items are migrated too.
+        if let group = keychainAccessGroup {
+            q[kSecAttrAccessGroup as String] = group
+        }
+        return q
+    }
+
+    private func setKeychain(account: String, value: String) {
+        guard let data = value.data(using: .utf8) else { return }
+        let query = baseQuery(account: account)
         let updateAttrs: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
@@ -65,13 +76,9 @@ final class CredentialsStore {
     }
 
     private func getKeychain(account: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        var query = baseQuery(account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let data = item as? Data else { return nil }
@@ -79,11 +86,6 @@ final class CredentialsStore {
     }
 
     private func deleteKeychain(account: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        SecItemDelete(query as CFDictionary)
+        SecItemDelete(baseQuery(account: account) as CFDictionary)
     }
 }

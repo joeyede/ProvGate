@@ -1,5 +1,17 @@
 import AppIntents
 
+// MARK: - Pedestrian
+
+struct PedestrianIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open Pedestrian Gate"
+    static let description = IntentDescription("Opens the pedestrian gate")
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        try await GateCommandSender.send(action: "pedestrian")
+        return .result(dialog: "Pedestrian gate opened")
+    }
+}
+
 // MARK: - Open Gate (full open)
 
 struct OpenGateIntent: AppIntent {
@@ -43,7 +55,7 @@ struct OpenOutsideRightIntent: AppIntent {
     static let description = IntentDescription("Open the right gate panel from outside")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let action = MQTTManager.resolvedAction("right", isOutsideView: true)
+        let action = GateHelpers.resolvedAction("right", isOutsideView: true)
         try await GateCommandSender.send(action: action)
         return .result(dialog: "Right panel opened")
     }
@@ -54,48 +66,8 @@ struct OpenOutsideLeftIntent: AppIntent {
     static let description = IntentDescription("Open the left gate panel from outside")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let action = MQTTManager.resolvedAction("left", isOutsideView: true)
+        let action = GateHelpers.resolvedAction("left", isOutsideView: true)
         try await GateCommandSender.send(action: action)
         return .result(dialog: "Left panel opened")
-    }
-}
-
-// MARK: - App Shortcuts (registers Siri phrases automatically)
-
-struct GateShortcuts: AppShortcutsProvider {
-    static var appShortcuts: [AppShortcut] {
-        AppShortcut(
-            intent: OpenGateIntent(),
-            phrases: [
-                "Open Gate with \(.applicationName)",
-                "Open the gate with \(.applicationName)"
-            ],
-            shortTitle: "Open Gate",
-            systemImageName: "arrow.up.left.and.arrow.down.right"
-        )
-        AppShortcut(
-            intent: OpenInsideRightIntent(),
-            phrases: ["Open inside right with \(.applicationName)"],
-            shortTitle: "Inside Right",
-            systemImageName: "arrow.right"
-        )
-        AppShortcut(
-            intent: OpenInsideLeftIntent(),
-            phrases: ["Open inside left with \(.applicationName)"],
-            shortTitle: "Inside Left",
-            systemImageName: "arrow.left"
-        )
-        AppShortcut(
-            intent: OpenOutsideRightIntent(),
-            phrases: ["Open outside right with \(.applicationName)"],
-            shortTitle: "Outside Right",
-            systemImageName: "arrow.right"
-        )
-        AppShortcut(
-            intent: OpenOutsideLeftIntent(),
-            phrases: ["Open outside left with \(.applicationName)"],
-            shortTitle: "Outside Left",
-            systemImageName: "arrow.left"
-        )
     }
 }
