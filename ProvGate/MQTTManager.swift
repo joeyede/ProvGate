@@ -22,10 +22,7 @@ final class MQTTManager: NSObject {
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
-    @ObservationIgnored private let store = CredentialsStore(
-        keychainAccessGroup: GateHelpers.appGroup,
-        userDefaultsSuite: GateHelpers.appGroup
-    )
+    @ObservationIgnored private let store = CredentialsStore()
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private(set) var reconnectAttempt = 0
