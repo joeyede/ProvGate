@@ -24,15 +24,18 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
     private var client: CocoaMQTT5?
     private var clientID = ""
 
-    // NSLock guards the mutable fields below, which are touched from both
-    // the async task and CocoaMQTT delegate callbacks (different threads).
-    // nonisolated(unsafe) opts out of actor-isolation inference so the
-    // nonisolated delegate methods can access them via the lock.
-    private let lock = NSLock()
-    nonisolated(unsafe) private var connectCont: CheckedContinuation<Void, Error>?
-    nonisolated(unsafe) private var subscribeCont: CheckedContinuation<Void, Error>?
-    nonisolated(unsafe) private var responseCont: CheckedContinuation<Void, Error>?
-    nonisolated(unsafe) private var pendingCorrelationId: String?
+    // All mutable state touched from both the async task and CocoaMQTT
+    // delegate callbacks lives here. The inner class is @unchecked Sendable
+    // so the compiler accepts cross-context access; the NSLock provides safety.
+    private final class State: @unchecked Sendable {
+        let lock = NSLock()
+        // nonisolated(unsafe): accessed from multiple contexts; the lock above provides safety.
+        nonisolated(unsafe) var connectCont: CheckedContinuation<Void, Error>?
+        nonisolated(unsafe) var subscribeCont: CheckedContinuation<Void, Error>?
+        nonisolated(unsafe) var responseCont: CheckedContinuation<Void, Error>?
+        nonisolated(unsafe) var pendingCorrelationId: String?
+    }
+    private let state = State()
 
     // MARK: - Entry point
 
@@ -74,21 +77,21 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
     private func connectToMQTT(username: String, password: String) async throws {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-                lock.lock()
+                self.state.lock.lock()
                 if Task.isCancelled {
-                    lock.unlock()
+                    self.state.lock.unlock()
                     cont.resume(throwing: CancellationError())
                     return
                 }
-                connectCont = cont
-                lock.unlock()
-                buildAndConnect(username: username, password: password)
+                self.state.connectCont = cont
+                self.state.lock.unlock()
+                self.buildAndConnect(username: username, password: password)
             }
         } onCancel: { [self] in
-            lock.lock()
-            let cont = connectCont
-            connectCont = nil
-            lock.unlock()
+            state.lock.lock()
+            let cont = state.connectCont
+            state.connectCont = nil
+            state.lock.unlock()
             cont?.resume(throwing: CancellationError())
         }
     }
@@ -97,21 +100,21 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
         guard let mqtt = client else { throw GateCommandError.connectionFailed }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-                lock.lock()
+                self.state.lock.lock()
                 if Task.isCancelled {
-                    lock.unlock()
+                    self.state.lock.unlock()
                     cont.resume(throwing: CancellationError())
                     return
                 }
-                subscribeCont = cont
-                lock.unlock()
-                mqtt.subscribe("gate/responses/\(clientID)", qos: .qos1)
+                self.state.subscribeCont = cont
+                self.state.lock.unlock()
+                mqtt.subscribe("gate/responses/\(self.clientID)", qos: .qos1)
             }
         } onCancel: { [self] in
-            lock.lock()
-            let cont = subscribeCont
-            subscribeCont = nil
-            lock.unlock()
+            state.lock.lock()
+            let cont = state.subscribeCont
+            state.subscribeCont = nil
+            state.lock.unlock()
             cont?.resume(throwing: CancellationError())
         }
     }
@@ -151,22 +154,22 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
     private func waitForResponse(correlationId: String) async throws {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-                lock.lock()
+                self.state.lock.lock()
                 if Task.isCancelled {
-                    lock.unlock()
+                    self.state.lock.unlock()
                     cont.resume(throwing: CancellationError())
                     return
                 }
-                pendingCorrelationId = correlationId
-                responseCont = cont
-                lock.unlock()
+                self.state.pendingCorrelationId = correlationId
+                self.state.responseCont = cont
+                self.state.lock.unlock()
             }
         } onCancel: { [self] in
-            lock.lock()
-            let cont = responseCont
-            responseCont = nil
-            pendingCorrelationId = nil
-            lock.unlock()
+            state.lock.lock()
+            let cont = state.responseCont
+            state.responseCont = nil
+            state.pendingCorrelationId = nil
+            state.lock.unlock()
             cont?.resume(throwing: CancellationError())
         }
     }
@@ -196,10 +199,10 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
 extension GateCommandSender: CocoaMQTT5Delegate {
 
     nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didConnectAck ack: CocoaMQTTCONNACKReasonCode, connAckData: MqttDecodeConnAck?) {
-        lock.lock()
-        let cont = connectCont
-        connectCont = nil
-        lock.unlock()
+        state.lock.lock()
+        let cont = state.connectCont
+        state.connectCont = nil
+        state.lock.unlock()
         if ack == .success {
             cont?.resume(returning: ())
         } else {
@@ -208,10 +211,10 @@ extension GateCommandSender: CocoaMQTT5Delegate {
     }
 
     nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didSubscribeTopics success: NSDictionary, failed: [String], subAckData: MqttDecodeSubAck?) {
-        lock.lock()
-        let cont = subscribeCont
-        subscribeCont = nil
-        lock.unlock()
+        state.lock.lock()
+        let cont = state.subscribeCont
+        state.subscribeCont = nil
+        state.lock.unlock()
         if failed.isEmpty {
             cont?.resume(returning: ())
         } else {
@@ -223,22 +226,22 @@ extension GateCommandSender: CocoaMQTT5Delegate {
         // CocoaMQTT strips the 2-byte length prefix before delivering corrData.
         guard let corrData = publishData?.correlationData,
               let correlationId = String(bytes: corrData, encoding: .utf8) else { return }
-        lock.lock()
-        guard correlationId == pendingCorrelationId else { lock.unlock(); return }
-        let cont = responseCont
-        responseCont = nil
-        pendingCorrelationId = nil
-        lock.unlock()
+        state.lock.lock()
+        guard correlationId == state.pendingCorrelationId else { state.lock.unlock(); return }
+        let cont = state.responseCont
+        state.responseCont = nil
+        state.pendingCorrelationId = nil
+        state.lock.unlock()
         cont?.resume(returning: ())
     }
 
     nonisolated func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
         let error: Error = err ?? GateCommandError.connectionFailed
-        lock.lock()
-        let cc = connectCont;   connectCont = nil
-        let sc = subscribeCont; subscribeCont = nil
-        let rc = responseCont;  responseCont = nil
-        lock.unlock()
+        state.lock.lock()
+        let cc = state.connectCont;   state.connectCont = nil
+        let sc = state.subscribeCont; state.subscribeCont = nil
+        let rc = state.responseCont;  state.responseCont = nil
+        state.lock.unlock()
         cc?.resume(throwing: error)
         sc?.resume(throwing: error)
         rc?.resume(throwing: error)
@@ -258,4 +261,3 @@ extension GateCommandSender: CocoaMQTT5Delegate {
     nonisolated func mqtt5DidPing(_ mqtt5: CocoaMQTT5) {}
     nonisolated func mqtt5DidReceivePong(_ mqtt5: CocoaMQTT5) {}
 }
-

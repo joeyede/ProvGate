@@ -114,6 +114,8 @@ struct GateControlView: View {
                             .foregroundStyle(!mqtt.isOutsideView ? Color.accentColor : .secondary)
                         Text("Inside")
                             .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .foregroundStyle(!mqtt.isOutsideView ? Color.accentColor : .secondary)
 
                         Toggle("", isOn: Binding(
@@ -125,6 +127,8 @@ struct GateControlView: View {
 
                         Text("Outside")
                             .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .foregroundStyle(mqtt.isOutsideView ? Color.accentColor : .secondary)
                         Image(systemName: "leaf")
                             .foregroundStyle(mqtt.isOutsideView ? Color.accentColor : .secondary)
@@ -207,6 +211,7 @@ private struct GateButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .opacity(isLoading ? 0.7 : 1.0)
         }
+        .buttonStyle(.plain)
         .disabled(isDisabled)
         .aspectRatio(1, contentMode: .fit)
         .sensoryFeedback(.impact(weight: .medium), trigger: isLoading) { _, newValue in newValue }
