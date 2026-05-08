@@ -26,11 +26,13 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
 
     // NSLock guards the mutable fields below, which are touched from both
     // the async task and CocoaMQTT delegate callbacks (different threads).
+    // nonisolated(unsafe) opts out of actor-isolation inference so the
+    // nonisolated delegate methods can access them via the lock.
     private let lock = NSLock()
-    private var connectCont: CheckedContinuation<Void, Error>?
-    private var subscribeCont: CheckedContinuation<Void, Error>?
-    private var responseCont: CheckedContinuation<Void, Error>?
-    private var pendingCorrelationId: String?
+    nonisolated(unsafe) private var connectCont: CheckedContinuation<Void, Error>?
+    nonisolated(unsafe) private var subscribeCont: CheckedContinuation<Void, Error>?
+    nonisolated(unsafe) private var responseCont: CheckedContinuation<Void, Error>?
+    nonisolated(unsafe) private var pendingCorrelationId: String?
 
     // MARK: - Entry point
 
