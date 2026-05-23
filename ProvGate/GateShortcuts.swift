@@ -5,46 +5,43 @@ import AppIntents
 struct GateShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
-            intent: PedestrianIntent(),
-            phrases: [
-                "Open pedestrian gate with \(.applicationName)",
-                "Open pedestrian with \(.applicationName)"
-            ],
-            shortTitle: "Pedestrian Gate",
-            systemImageName: "figure.walk"
-        )
-        AppShortcut(
             intent: OpenGateIntent(),
             phrases: [
-                "Open Gate with \(.applicationName)",
-                "Open the gate with \(.applicationName)"
+                "Open the gate with \(.applicationName)",
+                "Open gate with \(.applicationName)",
+                "Full open with \(.applicationName)",
+                "Open the \(.applicationName)",
             ],
             shortTitle: "Open Gate",
             systemImageName: "arrow.up.left.and.arrow.down.right"
         )
         AppShortcut(
-            intent: OpenInsideRightIntent(),
-            phrases: ["Open inside right with \(.applicationName)"],
-            shortTitle: "Inside Right",
-            systemImageName: "arrow.right"
+            intent: PedestrianIntent(),
+            phrases: [
+                "Open pedestrian gate with \(.applicationName)",
+                "Pedestrian gate with \(.applicationName)",
+                "Open pedestrian with \(.applicationName)",
+            ],
+            shortTitle: "Pedestrian Gate",
+            systemImageName: "figure.walk"
         )
         AppShortcut(
-            intent: OpenInsideLeftIntent(),
-            phrases: ["Open inside left with \(.applicationName)"],
-            shortTitle: "Inside Left",
+            intent: OpenOutsideLeftIntent(),
+            phrases: [
+                "Open left gate with \(.applicationName)",
+                "Left gate with \(.applicationName)",
+            ],
+            shortTitle: "Left Gate",
             systemImageName: "arrow.left"
         )
         AppShortcut(
             intent: OpenOutsideRightIntent(),
-            phrases: ["Open outside right with \(.applicationName)"],
-            shortTitle: "Outside Right",
+            phrases: [
+                "Open right gate with \(.applicationName)",
+                "Right gate with \(.applicationName)",
+            ],
+            shortTitle: "Right Gate",
             systemImageName: "arrow.right"
-        )
-        AppShortcut(
-            intent: OpenOutsideLeftIntent(),
-            phrases: ["Open outside left with \(.applicationName)"],
-            shortTitle: "Outside Left",
-            systemImageName: "arrow.left"
         )
     }
 }
