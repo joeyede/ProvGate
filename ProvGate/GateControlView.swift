@@ -7,8 +7,7 @@ import SwiftUI
 
 struct GateControlView: View {
     @Environment(MQTTManager.self) private var mqtt
-    @State private var showDebugInfo = false
-    @State private var debugHideTask: Task<Void, Never>? = nil
+    @State private var showDebugSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,30 +39,27 @@ struct GateControlView: View {
                     .font(.system(size: 32, weight: .bold))
                     .foregroundStyle(Color.accentColor)
                     .onLongPressGesture(minimumDuration: 0.6) {
-                        showDebugInfo.toggle()
-                        debugHideTask?.cancel()
-                        if showDebugInfo {
-                            debugHideTask = Task {
-                                try? await Task.sleep(for: .seconds(10))
-                                showDebugInfo = false
-                            }
-                        }
+                        showDebugSheet = true
                     }
-                if showDebugInfo {
-                    Text("\(Bundle.main.appVersion).\(Bundle.main.buildNumber)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if mqtt.isDryRun {
+                    Text("DRY RUN")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundStyle(.orange)
+                        .clipShape(Capsule())
                         .transition(.opacity)
-                    if let status = mqtt.gateStatus {
-                        Text(status)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .transition(.opacity)
-                    }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: showDebugInfo)
+            .animation(.easeInOut(duration: 0.2), value: mqtt.isDryRun)
             .padding(.bottom, 24)
+            .sheet(isPresented: $showDebugSheet) {
+                DebugSheet()
+                    .environment(mqtt)
+                    .presentationDetents([.height(240)])
+                    .presentationDragIndicator(.visible)
+            }
 
             // --- THE CONTROL GRID ---
             VStack(spacing: 12) { // Spacing between the top row and the gray box
@@ -169,6 +165,52 @@ struct GateControlView: View {
         }
     }
 
+}
+
+// --- DEBUG SHEET ---
+private struct DebugSheet: View {
+    @Environment(MQTTManager.self) private var mqtt
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Debug")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Version \(Bundle.main.appVersion) (\(Bundle.main.buildNumber))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let status = mqtt.gateStatus {
+                    Text("Gate: \(status)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dry Run")
+                        .font(.subheadline.weight(.medium))
+                    Text("Uses gate/test/… shadow topics — no real gate action")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { mqtt.isDryRun },
+                    set: { mqtt.setDryRun($0) }
+                ))
+                .labelsHidden()
+                .tint(.orange)
+            }
+
+            Spacer()
+        }
+        .padding(24)
+    }
 }
 
 // --- BUTTON COMPONENT ---

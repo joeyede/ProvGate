@@ -92,7 +92,7 @@ struct LoginView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
         .onAppear {
-            let saved = CredentialsStore().load()
+            let saved = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup).load()
             username = saved.username ?? ""
             password = saved.password ?? ""
             rememberMe = saved.rememberMe

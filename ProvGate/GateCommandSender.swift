@@ -20,9 +20,10 @@ enum GateCommandError: LocalizedError {
 /// Creates a fresh connection per invocation — no shared state with the main app session.
 final class GateCommandSender: NSObject, @unchecked Sendable {
 
-    private let store = CredentialsStore()
+    private let store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
     private var client: CocoaMQTT5?
     private var clientID = ""
+    private var topicPrefix = "gate"
 
     // All mutable state touched from both the async task and CocoaMQTT
     // delegate callbacks lives here. The inner class is @unchecked Sendable
@@ -51,6 +52,8 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
         guard creds.rememberMe, let username = creds.username, let password = creds.password else {
             throw GateCommandError.noCredentials
         }
+        topicPrefix = (UserDefaults(suiteName: GateHelpers.appGroup)?.bool(forKey: "provgate.isDryRun") ?? false)
+            ? "gate/test" : "gate"
 
         // Register defer before connecting so disconnect runs even on timeout.
         defer { client?.disconnect() }
@@ -108,7 +111,7 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
                 }
                 self.state.subscribeCont = cont
                 self.state.lock.unlock()
-                mqtt.subscribe("gate/responses/\(self.clientID)", qos: .qos1)
+                mqtt.subscribe("\(self.topicPrefix)/responses/\(self.clientID)", qos: .qos1)
             }
         } onCancel: { [self] in
             state.lock.lock()
@@ -143,10 +146,10 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
               let str = String(data: payload, encoding: .utf8) else {
             throw GateCommandError.connectionFailed
         }
-        let msg = CocoaMQTT5Message(topic: gateControlTopic, string: str, qos: .qos1)
+        let msg = CocoaMQTT5Message(topic: "\(topicPrefix)/control", string: str, qos: .qos1)
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
-        props.responseTopic = "gate/responses/\(clientID)"
+        props.responseTopic = "\(topicPrefix)/responses/\(clientID)"
         props.correlationData = GateHelpers.encodeCorrelationId(correlationId)
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
     }

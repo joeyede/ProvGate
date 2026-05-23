@@ -15,6 +15,9 @@ final class MQTTManager: NSObject {
     var isOutsideView: Bool = UserDefaults.standard.bool(forKey: "provgate.isOutsideView") {
         didSet { UserDefaults.standard.set(isOutsideView, forKey: "provgate.isOutsideView") }
     }
+    private(set) var isDryRun: Bool = UserDefaults(suiteName: GateHelpers.appGroup)?.bool(forKey: "provgate.isDryRun") ?? false {
+        didSet { UserDefaults(suiteName: GateHelpers.appGroup)?.set(isDryRun, forKey: "provgate.isDryRun") }
+    }
     private(set) var sendingAction: String? = nil
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
@@ -22,7 +25,7 @@ final class MQTTManager: NSObject {
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
-    @ObservationIgnored private let store = CredentialsStore()
+    @ObservationIgnored private let store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private(set) var reconnectAttempt = 0
@@ -33,6 +36,8 @@ final class MQTTManager: NSObject {
         super.init()
         startup()
     }
+
+    private var topicPrefix: String { isDryRun ? "gate/test" : "gate" }
 
     // MARK: - Public interface
 
@@ -48,6 +53,19 @@ final class MQTTManager: NSObject {
             store.clear()
         }
         createClient(username: username, password: password)
+    }
+
+    func setDryRun(_ enabled: Bool) {
+        guard enabled != isDryRun else { return }
+        isDryRun = enabled
+        guard connectionState == .connected else { return }
+        let creds = store.load()
+        guard creds.rememberMe, let u = creds.username, let p = creds.password else { return }
+        cancelReconnect()
+        teardown()
+        connectionState = .connecting
+        statusMessage = "Connecting..."
+        createClient(username: u, password: p)
     }
 
     func disconnect() {
@@ -77,10 +95,10 @@ final class MQTTManager: NSObject {
 
         guard let payload = try? JSONEncoder().encode(GateCommand(action: actual)),
               let payloadString = String(data: payload, encoding: .utf8) else { return }
-        let msg = CocoaMQTT5Message(topic: gateControlTopic, string: payloadString, qos: .qos1)
+        let msg = CocoaMQTT5Message(topic: "\(topicPrefix)/control", string: payloadString, qos: .qos1)
         let props = MqttPublishProperties()
         props.messageExpiryInterval = 60
-        props.responseTopic = "gate/responses/\(mqtt.clientID)"
+        props.responseTopic = "\(topicPrefix)/responses/\(mqtt.clientID)"
         props.correlationData = GateHelpers.encodeCorrelationId(correlationId)
 
         mqtt.publish(msg, DUP: false, retained: false, properties: props)
@@ -228,10 +246,10 @@ extension MQTTManager: CocoaMQTT5Delegate {
                 reconnectAttempt = 0
                 reconnectTask = nil
                 connectionState = .connected
-                statusMessage = "Connected"
-                notify("Connected successfully")
-                mqtt5.subscribe("gate/status", qos: .qos1)
-                mqtt5.subscribe("gate/responses/#", qos: .qos1)
+                statusMessage = isDryRun ? "Connected · DRY RUN" : "Connected"
+                notify(isDryRun ? "Connected (dry run)" : "Connected successfully")
+                mqtt5.subscribe("\(topicPrefix)/status", qos: .qos1)
+                mqtt5.subscribe("\(topicPrefix)/responses/#", qos: .qos1)
             } else {
                 connectionState = .disconnected
                 statusMessage = "Disconnected"
@@ -245,24 +263,23 @@ extension MQTTManager: CocoaMQTT5Delegate {
     }
 
     nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didReceiveMessage message: CocoaMQTT5Message, id: UInt16, publishData: MqttDecodePublish?) {
-        if message.topic == "gate/status" {
-            let status = message.string
-            Task { @MainActor [weak self] in self?.gateStatus = status }
-            return
-        }
-
-        guard message.topic.hasPrefix("gate/responses/") else { return }
-
-        guard let payload = message.string,
-              let jsonData = payload.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-              let corrData = publishData?.correlationData,
-              let correlationId = String(bytes: corrData, encoding: .utf8)
-        else { return }
-
-        let success = (json["status"] as? String) == "success"
+        let topic = message.topic
+        let payload = message.string
+        let corrData = publishData?.correlationData
         Task { @MainActor [weak self] in
             guard let self else { return }
+            if topic == "\(topicPrefix)/status" {
+                gateStatus = payload
+                return
+            }
+            guard topic.hasPrefix("\(topicPrefix)/responses/") else { return }
+            guard let payload,
+                  let jsonData = payload.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let corrData,
+                  let correlationId = String(bytes: corrData, encoding: .utf8)
+            else { return }
+            let success = (json["status"] as? String) == "success"
             let action = pendingCommands.removeValue(forKey: correlationId)
             if let action { statusMessage = "\(action.capitalized): \(success ? "Success" : "Failed")" }
         }
