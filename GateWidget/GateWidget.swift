@@ -72,11 +72,66 @@ struct PedestrianWidget: Widget {
     }
 }
 
+// MARK: - All-buttons (2×2 grid, inside view)
+
+private struct GateGridButton<I: AppIntent>: View {
+    let systemImage: String
+    let label: String
+    let intent: I
+
+    var body: some View {
+        Button(intent: intent) {
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 22, weight: .medium))
+                Text(label)
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .foregroundStyle(.white)
+            .background(Color.accentColor)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct GateControlWidgetView: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                GateGridButton(systemImage: "figure.walk",                        label: "Pedestrian", intent: PedestrianIntent())
+                GateGridButton(systemImage: "arrow.up.left.and.arrow.down.right", label: "Full Open",  intent: OpenGateIntent())
+            }
+            HStack(spacing: 8) {
+                GateGridButton(systemImage: "arrow.left",  label: "Left",  intent: OpenInsideLeftIntent())
+                GateGridButton(systemImage: "arrow.right", label: "Right", intent: OpenInsideRightIntent())
+            }
+        }
+        .padding(10)
+        .containerBackground(Color(.systemBackground), for: .widget)
+    }
+}
+
+struct GateControlWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "GateControlWidget", provider: GateProvider()) { _ in
+            GateControlWidgetView()
+        }
+        .configurationDisplayName("Gate Control")
+        .description("All four gate buttons — inside view.")
+        .supportedFamilies([.systemMedium])
+    }
+}
+
 // MARK: - Entry point
 
 @main
 struct GateWidgetBundle: WidgetBundle {
     var body: some Widget {
+        GateControlWidget()
         FullOpenWidget()
         PedestrianWidget()
     }
