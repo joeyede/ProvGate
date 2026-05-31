@@ -25,7 +25,7 @@ final class MQTTManager: NSObject {
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
-    @ObservationIgnored private let store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
+    @ObservationIgnored private let store: CredentialsStore
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private(set) var reconnectAttempt = 0
@@ -33,9 +33,18 @@ final class MQTTManager: NSObject {
     private static let connectionTimeoutSeconds = 10.0
 
     override init() {
+        self.store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
         super.init()
         startup()
     }
+
+    #if DEBUG
+    init(store: CredentialsStore) {
+        self.store = store
+        super.init()
+        startup()
+    }
+    #endif
 
     private var topicPrefix: String { isDryRun ? "gate/test" : "gate" }
 
