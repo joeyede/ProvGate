@@ -29,14 +29,17 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         interfaceController.setRootTemplate(template, animated: animated, completion: nil)
     }
 
-    private func makeButtons(enabled: Bool) -> [CPGridButton] {
-        let specs: [(title: String, symbol: String, action: String)] = [
-            ("Pedestrian", "figure.walk",       "pedestrian"),
-            ("Full Open",  "door.garage.open",  "full"),
-            ("Left",       "arrow.left",        GateHelpers.resolvedAction("left",  isOutsideView: true)),
-            ("Right",      "arrow.right",       GateHelpers.resolvedAction("right", isOutsideView: true)),
+    internal static func buttonSpecs() -> [(title: String, symbol: String, action: String)] {
+        [
+            ("Pedestrian", "figure.walk",      "pedestrian"),
+            ("Full Open",  "door.garage.open", "full"),
+            ("Left",       "arrow.left",       GateHelpers.resolvedAction("left",  isOutsideView: true)),
+            ("Right",      "arrow.right",      GateHelpers.resolvedAction("right", isOutsideView: true)),
         ]
-        return specs.map { spec in
+    }
+
+    private func makeButtons(enabled: Bool) -> [CPGridButton] {
+        return Self.buttonSpecs().map { spec in
             let img = UIImage(systemName: spec.symbol,
                               withConfiguration: UIImage.SymbolConfiguration(pointSize: 60))
                 ?? UIImage(systemName: "square")!

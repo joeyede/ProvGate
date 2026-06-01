@@ -269,3 +269,30 @@ struct CredentialSensitiveTests {
     }
 
 }
+
+// MARK: - CarPlay button specs
+
+struct CarPlayButtonTests {
+    let specs = CarPlaySceneDelegate.buttonSpecs()
+
+    @Test func exactlyFourButtons() {
+        #expect(specs.count == 4)
+    }
+
+    @Test func leftButtonUsesOutsidePerspective() {
+        let spec = specs.first { $0.title == "Left" }!
+        #expect(spec.action == "right")
+    }
+
+    @Test func rightButtonUsesOutsidePerspective() {
+        let spec = specs.first { $0.title == "Right" }!
+        #expect(spec.action == "left")
+    }
+
+    @Test func pedestrianAndFullAreUnaffected() {
+        let ped  = specs.first { $0.title == "Pedestrian" }!
+        let full = specs.first { $0.title == "Full Open"  }!
+        #expect(ped.action  == "pedestrian")
+        #expect(full.action == "full")
+    }
+}
