@@ -14,6 +14,8 @@ ProvGate (this repo)  ──MQTT (WSS 8884)──►  HiveMQ Cloud  ──MQTT�
 - The gate-app in gate-project is the React Native/Expo version of the same app. ProvGate replicates its feature set natively.
 - Commands (`pedestrian`, `full`, `left`, `right`) and topic names are identical between both clients — the `gate-remote` backend doesn't distinguish which client sent the command.
 
+There is also an **Android version** of ProvGate (Kotlin/Jetpack Compose) in a separate repo. On this machine it lives at `~/AndroidStudioProjects/ProvGate/` — the path may differ on other systems. It contains a useful Go tool at `tools/gate-emulator/` that emulates `gate-remote` against the dry-run topics (`gate/test/...`), subscribing to `gate/test/control`, sending MQTT5 ACKs back on the response topic, and publishing a heartbeat to `gate/test/status` every minute. Useful for manual end-to-end testing with dry-run mode enabled. See `tools/gate-emulator/emulator.conf.template` for required env vars (`MQTT_BROKER_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD`).
+
 ## Build & Run
 
 Open `ProvGate.xcodeproj` in Xcode and use ⌘R to build and run, or use the CLI:
