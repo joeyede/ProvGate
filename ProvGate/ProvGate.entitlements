@@ -6,5 +6,7 @@
 	<array>
 		<string>group.BitChor.ProvGate</string>
 	</array>
+	<key>com.apple.developer.carplay-parking</key>
+	<true/>
 </dict>
 </plist>

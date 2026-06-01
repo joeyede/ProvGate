@@ -3,7 +3,7 @@ import AppIntents
 
 @main
 struct ProvGateApp: App {
-    @State private var mqtt = MQTTManager()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         GateShortcuts.updateAppShortcutParameters()
@@ -21,7 +21,7 @@ struct ProvGateApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(mqtt)
+                .environment(appDelegate.mqtt)
         }
     }
 }
