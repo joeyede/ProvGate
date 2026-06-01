@@ -15,8 +15,8 @@ final class MQTTManager: NSObject {
     var isOutsideView: Bool = UserDefaults.standard.bool(forKey: "provgate.isOutsideView") {
         didSet { UserDefaults.standard.set(isOutsideView, forKey: "provgate.isOutsideView") }
     }
-    private(set) var isDryRun: Bool = UserDefaults(suiteName: GateHelpers.appGroup)?.bool(forKey: "provgate.isDryRun") ?? false {
-        didSet { UserDefaults(suiteName: GateHelpers.appGroup)?.set(isDryRun, forKey: "provgate.isDryRun") }
+    private(set) var isDryRun: Bool {
+        didSet { defaults?.set(isDryRun, forKey: "provgate.isDryRun") }
     }
     private(set) var sendingAction: String? = nil
     private(set) var notificationMessage: String? = nil
@@ -26,6 +26,7 @@ final class MQTTManager: NSObject {
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
     @ObservationIgnored private let store: CredentialsStore
+    @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     private(set) var reconnectAttempt = 0
@@ -33,14 +34,19 @@ final class MQTTManager: NSObject {
     private static let connectionTimeoutSeconds = 10.0
 
     override init() {
+        let appGroupDefaults = UserDefaults(suiteName: GateHelpers.appGroup)
         self.store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
+        self.defaults = appGroupDefaults
+        self.isDryRun = appGroupDefaults?.bool(forKey: "provgate.isDryRun") ?? false
         super.init()
         startup()
     }
 
     #if DEBUG
-    init(store: CredentialsStore) {
+    init(store: CredentialsStore, defaults: UserDefaults? = nil) {
         self.store = store
+        self.defaults = defaults
+        self.isDryRun = defaults?.bool(forKey: "provgate.isDryRun") ?? false
         super.init()
         startup()
     }
@@ -146,6 +152,19 @@ final class MQTTManager: NSObject {
     // MARK: - Private
 
     private func startup() {
+        #if DEBUG
+        if CommandLine.arguments.contains("-UITestForceConnected") {
+            connectionState = .connected
+            statusMessage = "Connected · DRY RUN"
+            isDryRun = true
+            return
+        }
+        if CommandLine.arguments.contains("-UITestForceConnecting") {
+            connectionState = .connecting
+            statusMessage = "Connecting..."
+            return
+        }
+        #endif
         let creds = store.load()
         if creds.rememberMe, let u = creds.username, let p = creds.password {
             connectionState = .connecting

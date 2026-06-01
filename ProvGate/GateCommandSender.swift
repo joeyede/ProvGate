@@ -20,10 +20,25 @@ enum GateCommandError: LocalizedError {
 /// Creates a fresh connection per invocation — no shared state with the main app session.
 final class GateCommandSender: NSObject, @unchecked Sendable {
 
-    private let store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
+    private let store: CredentialsStore
+    private let defaults: UserDefaults?
     private var client: CocoaMQTT5?
     private var clientID = ""
     private var topicPrefix = "gate"
+
+    override init() {
+        self.store = CredentialsStore(keychainAccessGroup: GateHelpers.appGroup, userDefaultsSuite: GateHelpers.appGroup)
+        self.defaults = UserDefaults(suiteName: GateHelpers.appGroup)
+        super.init()
+    }
+
+    #if DEBUG
+    init(store: CredentialsStore, defaults: UserDefaults?) {
+        self.store = store
+        self.defaults = defaults
+        super.init()
+    }
+    #endif
 
     // All mutable state touched from both the async task and CocoaMQTT
     // delegate callbacks lives here. The inner class is @unchecked Sendable
@@ -45,6 +60,14 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
         try await sender.perform(action: action)
     }
 
+    #if DEBUG
+    /// Test entry point — lets integration tests inject an isolated credential store and dry-run flag.
+    static func sendForTesting(action: String, store: CredentialsStore, defaults: UserDefaults?) async throws {
+        let sender = GateCommandSender(store: store, defaults: defaults)
+        try await sender.perform(action: action)
+    }
+    #endif
+
     // MARK: - Private flow
 
     private func perform(action: String) async throws {
@@ -52,8 +75,7 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
         guard creds.rememberMe, let username = creds.username, let password = creds.password else {
             throw GateCommandError.noCredentials
         }
-        topicPrefix = (UserDefaults(suiteName: GateHelpers.appGroup)?.bool(forKey: "provgate.isDryRun") ?? false)
-            ? "gate/test" : "gate"
+        topicPrefix = (defaults?.bool(forKey: "provgate.isDryRun") ?? false) ? "gate/test" : "gate"
 
         // Register defer before connecting so disconnect runs even on timeout.
         defer { client?.disconnect() }

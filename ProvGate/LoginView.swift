@@ -68,6 +68,8 @@ struct LoginView: View {
                     }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
+                    .accessibilityLabel(showPassword ? "Hide password" : "Show password")
+                    .accessibilityIdentifier("showPasswordToggle")
                 }
 
                 Toggle("Remember me", isOn: $rememberMe)

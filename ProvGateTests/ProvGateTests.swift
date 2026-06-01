@@ -49,15 +49,6 @@ struct CorrelationIdTests {
         let decoded = String(bytes: rawBytes, encoding: .utf8)
         #expect(decoded == id)
     }
-
-    // Exercises the exact decode path used in didReceiveMessage.
-    @Test func productionDecodePathRoundTrip() {
-        let id = UUID().uuidString
-        let encoded = MQTTManager.encodeCorrelationId(id)
-        let corrData = Array(encoded.dropFirst(2))
-        let decoded = String(bytes: corrData, encoding: .utf8)
-        #expect(decoded == id)
-    }
 }
 
 // MARK: - Credential-sensitive tests
@@ -223,7 +214,8 @@ struct CredentialSensitiveTests {
     @MainActor
     struct DryRunFlagTests {
         let store = testStore()
-        // Use a separate UserDefaults suite so tests don't touch the real app-group flag.
+        // Isolated UserDefaults suite — actually injected into MQTTManager so we
+        // never touch the real app-group flag.
         let dryRunDefaults = UserDefaults(suiteName: "ProvGate.test.dryRun")!
 
         init() {
@@ -231,32 +223,40 @@ struct CredentialSensitiveTests {
             dryRunDefaults.removeObject(forKey: "provgate.isDryRun")
         }
 
-        @Test func defaultsToFalse() {
-            let manager = MQTTManager(store: store)
+        @Test func defaultsToFalseWhenSuiteIsEmpty() {
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
             #expect(manager.isDryRun == false)
         }
 
+        @Test func initialValueIsReadFromInjectedDefaults() {
+            dryRunDefaults.set(true, forKey: "provgate.isDryRun")
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
+            #expect(manager.isDryRun == true)
+        }
+
         @Test func setDryRunToSameValueIsNoOp() {
-            let manager = MQTTManager(store: store)
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
             let before = manager.connectionState
             manager.setDryRun(false)
             #expect(manager.connectionState == before)
         }
 
-        @Test func setDryRunWhileDisconnectedUpdatesFlag() {
-            let manager = MQTTManager(store: store)
+        @Test func setDryRunWhileDisconnectedUpdatesFlagAndPersists() {
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
             #expect(manager.connectionState == .disconnected)
             manager.setDryRun(true)
             #expect(manager.isDryRun == true)
+            #expect(dryRunDefaults.bool(forKey: "provgate.isDryRun") == true)
             // No reconnect attempt — state stays disconnected
             #expect(manager.connectionState == .disconnected)
             manager.setDryRun(false)
             #expect(manager.isDryRun == false)
+            #expect(dryRunDefaults.bool(forKey: "provgate.isDryRun") == false)
         }
 
         @Test func setDryRunWithSavedCredsWhileConnectingTriggersNoReconnect() {
             // setDryRun only reconnects when already .connected
-            let manager = MQTTManager(store: store)
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
             store.save(username: "u", password: "p", rememberMe: true)
             manager.connect(username: "u", password: "p", rememberMe: true)
             #expect(manager.connectionState == .connecting)
@@ -268,34 +268,4 @@ struct CredentialSensitiveTests {
         }
     }
 
-    // MARK: GateCommandSender dry run topic selection
-
-    struct GateCommandSenderTopicTests {
-        let defaults = UserDefaults(suiteName: "ProvGate.test.dryRun")!
-        init() { defaults.removeObject(forKey: "provgate.isDryRun") }
-
-        @Test func noCredentialsThrowsImmediately() async {
-            let store = testStore()
-            store.clear()
-            // GateCommandSender reads credentials from the same store it was built with.
-            // With no creds saved it must throw .noCredentials without touching the network.
-            // We can't inject a store into GateCommandSender directly, so we verify the
-            // app-group store is empty (the real send path) and that the error surfaces.
-            // Note: this test only runs correctly when the real app-group keychain has no creds.
-            // In CI the keychain is always clean; locally it depends on app state.
-        }
-
-        @Test func dryRunFlagFalseSelectsRealTopicPrefix() {
-            defaults.set(false, forKey: "provgate.isDryRun")
-            let prefix = (defaults.bool(forKey: "provgate.isDryRun")) ? "gate/test" : "gate"
-            #expect(prefix == "gate")
-        }
-
-        @Test func dryRunFlagTrueSelectsTestTopicPrefix() {
-            defaults.set(true, forKey: "provgate.isDryRun")
-            let prefix = (defaults.bool(forKey: "provgate.isDryRun")) ? "gate/test" : "gate"
-            #expect(prefix == "gate/test")
-            defaults.removeObject(forKey: "provgate.isDryRun")
-        }
-    }
 }
