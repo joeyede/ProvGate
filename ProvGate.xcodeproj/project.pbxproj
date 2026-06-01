@@ -75,7 +75,6 @@
 		51BDB3A6E52B444187E7B075 /* Exceptions for "GateWidget" folder in "GateWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				GateWidget.entitlements,
 				Info.plist,
 			);
 			target = 5E65439A2EA040219B8786EE /* GateWidget */;

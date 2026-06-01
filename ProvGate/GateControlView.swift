@@ -28,6 +28,7 @@ struct GateControlView: View {
                         .font(.title2)
                         .foregroundStyle(Color.accentColor)
                 }
+                .accessibilityLabel("Log out")
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)

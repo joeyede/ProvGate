@@ -15,3 +15,7 @@ DerivedData/
 
 # Local broker config (contains HiveMQ host — do not commit)
 ProvGate/Config.swift
+
+# Integration test credentials (sourced by xcodebuild — do not commit)
+.provgate-test-env
+*.provgate-test-env

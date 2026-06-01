@@ -3,6 +3,13 @@ import Testing
 import CocoaMQTT
 @testable import ProvGate
 
+// MARK: - Helpers
+
+/// Isolated credential store for tests — never touches the real app-group keychain.
+private func testStore() -> CredentialsStore {
+    CredentialsStore(service: "ProvGate.MQTT.test")
+}
+
 // MARK: - Left/right action swap
 
 struct ActionSwapTests {
@@ -38,27 +45,14 @@ struct CorrelationIdTests {
     @Test func uuidRoundTrip() {
         let id = "123e4567-e89b-12d3-a456-426614174000"
         let encoded = MQTTManager.encodeCorrelationId(id)
-        // CocoaMQTT strips the 2-byte length prefix before delivering corrData,
-        // so the production decode receives only the raw UTF-8 bytes.
         let rawBytes = Array(encoded.dropFirst(2))
         let decoded = String(bytes: rawBytes, encoding: .utf8)
-        #expect(decoded == id)
-    }
-
-    // Exercises the exact decode path used in didReceiveMessage: String(bytes:encoding:)
-    // applied to corrData after CocoaMQTT strips the 2-byte prefix.
-    @Test func productionDecodePathRoundTrip() {
-        let id = UUID().uuidString
-        let encoded = MQTTManager.encodeCorrelationId(id)
-        // Simulate what CocoaMQTT delivers as corrData (prefix stripped)
-        let corrData = Array(encoded.dropFirst(2))
-        let decoded = String(bytes: corrData, encoding: .utf8)
         #expect(decoded == id)
     }
 }
 
 // MARK: - Credential-sensitive tests
-// Serialized so that keychain reads/writes across suites don't race.
+// Serialized so keychain reads/writes don't race across suites.
 
 @Suite(.serialized)
 struct CredentialSensitiveTests {
@@ -66,8 +60,7 @@ struct CredentialSensitiveTests {
     // MARK: CredentialsStore
 
     struct CredentialsStoreTests {
-        let store = CredentialsStore(service: "ProvGate.MQTT.test")
-
+        let store = testStore()
         init() { store.clear() }
 
         @Test func freshStoreReturnsNilCredentials() {
@@ -99,20 +92,18 @@ struct CredentialSensitiveTests {
 
     @MainActor
     struct ScheduleReconnectTests {
-        init() { CredentialsStore().clear() }
+        let store = testStore()
+        init() { store.clear() }
 
         @Test func noCredentialsGuardTransitionsToDisconnected() {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             manager.testHook_scheduleReconnect()
             #expect(manager.connectionState == .disconnected)
             #expect(manager.statusMessage == "Disconnected")
         }
 
         @Test func firstCallGoesToReconnectingAndIncrementsAttempt() {
-            // Create manager first (no credentials → .disconnected, no live connection attempt),
-            // then save credentials so scheduleReconnect() finds them.
-            let manager = MQTTManager()
-            let store = CredentialsStore()
+            let manager = MQTTManager(store: store)
             store.save(username: "u", password: "p", rememberMe: true)
             manager.testHook_scheduleReconnect()
             #expect(manager.connectionState == .reconnecting)
@@ -121,10 +112,7 @@ struct CredentialSensitiveTests {
         }
 
         @Test func exceedingMaxAttemptsTransitionsToDisconnectedWithError() {
-            // Create manager first (no credentials → .disconnected, no live connection attempt),
-            // then save credentials so scheduleReconnect() finds them.
-            let manager = MQTTManager()
-            let store = CredentialsStore()
+            let manager = MQTTManager(store: store)
             store.save(username: "u", password: "p", rememberMe: true)
             for _ in 0...MQTTManager.maxReconnectAttempts {
                 manager.testHook_scheduleReconnect()
@@ -135,54 +123,50 @@ struct CredentialSensitiveTests {
         }
     }
 
-    // MARK: Bug fix 1 — loadingAction → sendingAction rename
+    // MARK: sendingAction guards
 
     @MainActor
     struct SendingActionTests {
-        init() { CredentialsStore().clear() }
+        let store = testStore()
+        init() { store.clear() }
 
         @Test func sendingActionIsNilOnStartup() {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             #expect(manager.sendingAction == nil)
         }
 
-        // sendCommand guard must not set sendingAction when not connected
         @Test func sendCommandWhenNotConnectedDoesNotSetSendingAction() {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             manager.sendCommand("full")
             #expect(manager.sendingAction == nil)
             #expect(manager.statusMessage == "Not connected")
         }
     }
 
-    // MARK: Bug fix 2 — handleAppBecameActive .reconnecting guard
+    // MARK: handleAppBecameActive guards
 
     @MainActor
     struct HandleAppBecameActiveGuardTests {
-        init() { CredentialsStore().clear() }
+        let store = testStore()
+        init() { store.clear() }
 
-        // .disconnected + no credentials → credentials guard fires, state unchanged
         @Test func noOpWhenDisconnectedAndNoCredentialsSaved() {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             #expect(manager.connectionState == .disconnected)
             manager.handleAppBecameActive()
             #expect(manager.connectionState == .disconnected)
         }
 
-        // .disconnected + saved credentials → transitions to .connecting
         @Test func withSavedCredentialsTransitionsToConnecting() {
-            let manager = MQTTManager()
-            #expect(manager.connectionState == .disconnected)
-            let store = CredentialsStore()
+            let manager = MQTTManager(store: store)
             store.save(username: "u", password: "p", rememberMe: true)
             manager.handleAppBecameActive()
             #expect(manager.connectionState == .connecting)
             manager.disconnect()
         }
 
-        // .connecting → guard returns early, no state change
         @Test func connectingStateIsNoOp() {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             manager.connect(username: "u", password: "p", rememberMe: false)
             #expect(manager.connectionState == .connecting)
             manager.handleAppBecameActive()
@@ -195,12 +179,11 @@ struct CredentialSensitiveTests {
 
     @MainActor
     struct NotifyTests {
-        init() { CredentialsStore().clear() }
+        let store = testStore()
+        init() { store.clear() }
 
-        // A second notification fired before the first expires should replace it,
-        // not leave the original message visible.
         @Test func secondNotificationReplacesFirst() async {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             manager.notify("first")
             await Task.yield()
             #expect(manager.notificationMessage == "first")
@@ -210,20 +193,79 @@ struct CredentialSensitiveTests {
         }
     }
 
-    // MARK: Bug fix 3 — mqtt5DidDisconnect stale-client guard
+    // MARK: stale-client disconnect guard
 
     @MainActor
     struct StaleDisconnectGuardTests {
-        init() { CredentialsStore().clear() }
+        let store = testStore()
+        init() { store.clear() }
 
-        // client is nil after clean startup; mqtt5 === client is false for any non-nil instance.
-        // Uses 192.0.2.1 (RFC 5737 TEST-NET) to avoid real DNS lookups.
         @Test func staleClientDisconnectDoesNotTriggerReconnect() async throws {
-            let manager = MQTTManager()
+            let manager = MQTTManager(store: store)
             let stale = CocoaMQTT5(clientID: "stale", host: "192.0.2.1", port: 8884)
             manager.mqtt5DidDisconnect(stale, withError: nil)
             try await Task.sleep(for: .milliseconds(50))
             #expect(manager.connectionState == .disconnected)
         }
     }
+
+    // MARK: Dry run flag
+
+    @MainActor
+    struct DryRunFlagTests {
+        let store = testStore()
+        // Isolated UserDefaults suite — actually injected into MQTTManager so we
+        // never touch the real app-group flag.
+        let dryRunDefaults = UserDefaults(suiteName: "ProvGate.test.dryRun")!
+
+        init() {
+            store.clear()
+            dryRunDefaults.removeObject(forKey: "provgate.isDryRun")
+        }
+
+        @Test func defaultsToFalseWhenSuiteIsEmpty() {
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
+            #expect(manager.isDryRun == false)
+        }
+
+        @Test func initialValueIsReadFromInjectedDefaults() {
+            dryRunDefaults.set(true, forKey: "provgate.isDryRun")
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
+            #expect(manager.isDryRun == true)
+        }
+
+        @Test func setDryRunToSameValueIsNoOp() {
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
+            let before = manager.connectionState
+            manager.setDryRun(false)
+            #expect(manager.connectionState == before)
+        }
+
+        @Test func setDryRunWhileDisconnectedUpdatesFlagAndPersists() {
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
+            #expect(manager.connectionState == .disconnected)
+            manager.setDryRun(true)
+            #expect(manager.isDryRun == true)
+            #expect(dryRunDefaults.bool(forKey: "provgate.isDryRun") == true)
+            // No reconnect attempt — state stays disconnected
+            #expect(manager.connectionState == .disconnected)
+            manager.setDryRun(false)
+            #expect(manager.isDryRun == false)
+            #expect(dryRunDefaults.bool(forKey: "provgate.isDryRun") == false)
+        }
+
+        @Test func setDryRunWithSavedCredsWhileConnectingTriggersNoReconnect() {
+            // setDryRun only reconnects when already .connected
+            let manager = MQTTManager(store: store, defaults: dryRunDefaults)
+            store.save(username: "u", password: "p", rememberMe: true)
+            manager.connect(username: "u", password: "p", rememberMe: true)
+            #expect(manager.connectionState == .connecting)
+            manager.setDryRun(true)
+            // Still connecting — setDryRun guard fires (not .connected), no extra reconnect
+            #expect(manager.isDryRun == true)
+            #expect(manager.connectionState == .connecting)
+            manager.disconnect()
+        }
+    }
+
 }
