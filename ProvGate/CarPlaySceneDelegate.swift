@@ -10,7 +10,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         didConnect interfaceController: CPInterfaceController
     ) {
         self.interfaceController = interfaceController
-        mqtt = (UIApplication.shared.delegate as! AppDelegate).mqtt
+        mqtt = AppDelegate.current!.mqtt
         setTemplate(animated: false)
         observe()
     }
