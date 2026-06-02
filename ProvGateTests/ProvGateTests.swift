@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import CocoaMQTT
+import UIKit
 @testable import ProvGate
 
 // MARK: - Helpers
@@ -27,6 +28,31 @@ struct ActionSwapTests {
         #expect(MQTTManager.resolvedAction("pedestrian", isOutsideView: true)  == "pedestrian")
         #expect(MQTTManager.resolvedAction("full",       isOutsideView: true)  == "full")
         #expect(MQTTManager.resolvedAction("pedestrian", isOutsideView: false) == "pedestrian")
+    }
+}
+
+// MARK: - Home Screen Quick Actions
+
+struct QuickActionTests {
+    @Test func actionMappingUsesInsidePerspective() {
+        #expect(QuickActions.Kind.open.action       == "full")
+        #expect(QuickActions.Kind.pedestrian.action == "pedestrian")
+        // Inside perspective: no left↔right swap.
+        #expect(QuickActions.Kind.left.action  == "left")
+        #expect(QuickActions.Kind.right.action == "right")
+    }
+
+    @Test func shortcutTypesAreUniqueAndRoundTrip() {
+        let types = QuickActions.Kind.allCases.map(\.rawValue)
+        #expect(Set(types).count == types.count)
+        for kind in QuickActions.Kind.allCases {
+            #expect(QuickActions.Kind(rawValue: kind.shortcutItem.type) == kind)
+        }
+    }
+
+    @Test func unknownShortcutTypeIsNotHandled() {
+        let unknown = UIApplicationShortcutItem(type: "BitChor.ProvGate.quickaction.bogus", localizedTitle: "x")
+        #expect(QuickActions.handle(unknown) == false)
     }
 }
 

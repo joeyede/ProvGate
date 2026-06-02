@@ -1,6 +1,0 @@
-// Copy this file to Config.swift and fill in your HiveMQ Cloud details.
-// Config.swift is git-ignored and must never be committed.
-enum Config {
-    static let brokerHost = "YOUR_CLUSTER_ID.s1.eu.hivemq.cloud"
-    static let brokerPort: UInt16 = 8884
-}
