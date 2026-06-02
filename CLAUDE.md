@@ -29,7 +29,7 @@ For running tests, see [Testing](#testing) below.
 
 Dependencies are managed via Swift Package Manager (SPM) and resolved automatically on build.
 
-**Required before building:** copy `ProvGate/Config.swift.template` to `ProvGate/Config.swift` and fill in your HiveMQ Cloud host. `Config.swift` is git-ignored and must not be committed.
+`ProvGate/Config.swift` holds the HiveMQ Cloud host and port. It is committed (the host is not a secret — it ships inside the App Store binary; the real secret is the per-user MQTT username/password, which lives only in the Keychain at runtime). No setup step is needed before building.
 
 ## Testing
 
