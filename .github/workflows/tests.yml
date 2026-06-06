@@ -14,12 +14,14 @@ jobs:
 
       - name: Select simulator
         run: |
-          # Pick the newest available iPhone simulator on this runner.
+          # Pick the newest available numbered iPhone simulator on this runner.
+          # simctl output format: "    iPhone 16 Pro (UUID) (Shutdown)"  — no quotes.
           SIM_NAME=$(xcrun simctl list devices available 2>/dev/null \
-            | grep -E '"iPhone [0-9]' \
-            | sed "s/.*\"\(iPhone [^\"(]*\).*/\1/" \
+            | grep -E '^\s+iPhone [0-9]' \
+            | sed 's/^\s*\(iPhone [^(]*\) (.*/\1/' \
             | sed 's/[[:space:]]*$//' \
-            | sort -t' ' -k2 -V \
+            | sort -u \
+            | sort -V \
             | tail -1)
           if [ -z "$SIM_NAME" ]; then
             echo "No available iPhone simulator found" >&2
