@@ -38,8 +38,9 @@ if [[ "${1:-}" == "--with-env" ]]; then
     # shellcheck source=/dev/null
     source ~/.provgate-test-env
     # Ensure the simulator is booted, then push credentials into its launchd environment
-    # so the in-simulator test process inherits them.
-    xcrun simctl bootstatus "$SIM_NAME" -b >/dev/null 2>&1 || xcrun simctl boot "$SIM_NAME" 2>/dev/null || true
+    # so the in-simulator test process inherits them. Prefer the UDID (CI) over name.
+    SIM_REF="${SIMULATOR_UDID:-$SIM_NAME}"
+    xcrun simctl bootstatus "$SIM_REF" -b >/dev/null 2>&1 || xcrun simctl boot "$SIM_REF" 2>/dev/null || true
     xcrun simctl spawn booted launchctl setenv PROVGATE_TEST_USERNAME "${PROVGATE_TEST_USERNAME:-}"
     xcrun simctl spawn booted launchctl setenv PROVGATE_TEST_PASSWORD "${PROVGATE_TEST_PASSWORD:-}"
 fi

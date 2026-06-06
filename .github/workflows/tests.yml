@@ -12,36 +12,41 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Select simulator
+      - name: Select Xcode and simulator
         run: |
-          # simctl lists runtimes from ALL installed Xcodes (including betas).
-          # Restrict to the major iOS version the active Xcode SDK targets.
-          IOS_SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
-          IOS_MAJOR="${IOS_SDK%%.*}"
-          echo "Active Xcode iOS SDK: $IOS_SDK (major: $IOS_MAJOR)"
+          set -euo pipefail
+          # The runner ships several Xcodes. The default is often an older one
+          # whose simulators xcodebuild cannot use for testing (it falls back to
+          # "My Mac"). Select the NEWEST installed Xcode — it owns matching
+          # simulators and lines up with local dev (iPhone 17 / iOS 26).
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Selecting $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
 
-          # Pick the last (newest by sort -V) iPhone from the matching iOS section.
-          SELECTED=$(xcrun simctl list devices available 2>/dev/null \
-            | awk -v major="$IOS_MAJOR" '
-                /^-- /{ p = ($0 ~ ("^-- iOS " major "\\.")) }
-                p && /iPhone [0-9]/
-              ' \
+          # Ground truth: ask xcodebuild which destinations it can actually use,
+          # and grab the newest concrete iPhone simulator id. This is fast (~20s)
+          # so a bad setup fails here in under a minute, not after a full build.
+          DEST=$(xcodebuild -project ProvGate.xcodeproj -scheme ProvGate -showdestinations 2>/dev/null \
+            | grep 'platform:iOS Simulator' \
+            | grep 'name:iPhone' \
+            | grep -v 'placeholder' \
             | sort -V \
-            | tail -1)
-
-          if [ -z "$SELECTED" ]; then
-            echo "No compatible iPhone simulator found for iOS $IOS_MAJOR" >&2
-            xcrun simctl list devices available >&2
+            | tail -1 || true)
+          if [ -z "$DEST" ]; then
+            echo "No concrete iOS Simulator destination available." >&2
+            xcodebuild -project ProvGate.xcodeproj -scheme ProvGate -showdestinations 2>&1 | tail -40 >&2
             exit 1
           fi
-
-          SIM_NAME=$(echo "$SELECTED" | sed -E 's/^[[:space:]]*(iPhone [^(]+)\(.*/\1/' | sed 's/[[:space:]]*$//')
-          SIM_UDID=$(echo "$SELECTED" | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
-
-          echo "Using simulator: $SIM_NAME ($SIM_UDID)"
+          echo "Destination: $DEST"
+          SIM_UDID=$(echo "$DEST" | grep -oE 'id:[0-9A-Fa-f-]+' | head -1 | cut -d: -f2)
+          if [ -z "$SIM_UDID" ]; then
+            echo "Could not parse simulator id from: $DEST" >&2
+            exit 1
+          fi
+          echo "Booting $SIM_UDID"
           xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
-          xcrun simctl bootstatus "$SIM_UDID" -b
-          echo "SIMULATOR_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$SIM_UDID" -b || true
           echo "SIMULATOR_UDID=$SIM_UDID" >> "$GITHUB_ENV"
 
       - name: Configure integration credentials
