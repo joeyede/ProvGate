@@ -14,18 +14,20 @@ jobs:
 
       - name: Select simulator
         run: |
-          # Pick the newest available numbered iPhone simulator on this runner.
-          # simctl output format: "    iPhone 16 Pro (UUID) (Shutdown)"  — no quotes.
-          SIM_NAME=$(xcrun simctl list devices available 2>/dev/null \
-            | grep -E '^[[:space:]]+iPhone [0-9]' \
-            | sed -E 's/^[[:space:]]*(iPhone [^(]+)\(.*/\1/' \
-            | sed 's/[[:space:]]*$//' \
+          # Ask xcodebuild which iPhone simulators it actually supports — avoids
+          # picking an iOS-26-beta device that Xcode 16 doesn't know about.
+          SIM_NAME=$(xcodebuild -project ProvGate.xcodeproj -scheme ProvGate \
+            -showdestinations 2>/dev/null \
+            | grep 'platform:iOS Simulator' \
+            | grep -oE 'name:[^,}]+' \
+            | grep -E 'name:iPhone [0-9]' \
+            | sed 's/name://' \
             | sort -u \
             | sort -V \
             | tail -1)
           if [ -z "$SIM_NAME" ]; then
-            echo "No available iPhone simulator found" >&2
-            xcrun simctl list devices available >&2
+            echo "No compatible iPhone simulator found" >&2
+            xcodebuild -project ProvGate.xcodeproj -scheme ProvGate -showdestinations 2>&1 >&2 || true
             exit 1
           fi
           echo "Using simulator: $SIM_NAME"
