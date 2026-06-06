@@ -16,32 +16,37 @@ jobs:
         run: |
           set -euo pipefail
           # The runner ships several Xcodes. The default is often an older one
-          # whose simulators xcodebuild cannot use for testing (it falls back to
-          # "My Mac"). Select the NEWEST installed Xcode — it owns matching
-          # simulators and lines up with local dev (iPhone 17 / iOS 26).
+          # whose simulators xcodebuild cannot use for testing — xcodebuild then
+          # falls back to "My Mac" (a documented behaviour: when no matching
+          # simulator is found it picks macOS as the first available destination).
+          # Select the NEWEST installed Xcode; it lines up with local dev
+          # (iPhone 17 / iOS 26).
           XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           echo "Selecting $XCODE"
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
-          # Pick a concrete iPhone simulator whose runtime matches this Xcode's
-          # iOS SDK major version. simctl lists devices from all Xcodes, so we
-          # restrict to the active SDK's major to guarantee xcodebuild can use it.
-          IOS_MAJOR=$(xcrun --sdk iphonesimulator --show-sdk-version | cut -d. -f1)
-          echo "Active iOS SDK major: $IOS_MAJOR"
+          # Pick the newest iPhone from the NEWEST registered iOS runtime section.
+          # `simctl list devices available` only lists devices whose runtime is
+          # registered with the active Xcode, and the newest section corresponds
+          # to that Xcode's bundled runtime — so targeting this device by its
+          # exact UDID is guaranteed to match (no "My Mac" fallback).
+          NEWEST_SECTION=$(xcrun simctl list devices available 2>/dev/null \
+            | grep -E '^-- iOS ' | sort -V | tail -1)
+          echo "Newest runtime: $NEWEST_SECTION"
           SELECTED=$(xcrun simctl list devices available 2>/dev/null \
-            | awk -v major="$IOS_MAJOR" '
-                /^-- /{ p = ($0 ~ ("^-- iOS " major "\\.")) }
+            | awk -v sec="$NEWEST_SECTION" '
+                /^-- /{ p = ($0 == sec) }
                 p && /iPhone [0-9]/
               ' \
             | sort -V \
             | tail -1)
           if [ -z "$SELECTED" ]; then
-            echo "No iOS $IOS_MAJOR iPhone simulator found." >&2
+            echo "No iPhone simulator found in $NEWEST_SECTION" >&2
             xcrun simctl list devices available >&2
             exit 1
           fi
-          SIM_UDID=$(echo "$SELECTED" | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+          SIM_UDID=$(echo "$SELECTED" | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
           echo "Selected:$SELECTED"
           echo "Booting $SIM_UDID"
           xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
