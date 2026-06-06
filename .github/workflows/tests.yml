@@ -17,8 +17,8 @@ jobs:
           # Pick the newest available numbered iPhone simulator on this runner.
           # simctl output format: "    iPhone 16 Pro (UUID) (Shutdown)"  — no quotes.
           SIM_NAME=$(xcrun simctl list devices available 2>/dev/null \
-            | grep -E '^\s+iPhone [0-9]' \
-            | sed 's/^\s*\(iPhone [^(]*\) (.*/\1/' \
+            | grep -E '^[[:space:]]+iPhone [0-9]' \
+            | sed -E 's/^[[:space:]]*(iPhone [^(]+)\(.*/\1/' \
             | sed 's/[[:space:]]*$//' \
             | sort -u \
             | sort -V \
