@@ -10,15 +10,26 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
-
-      - name: Boot simulator
+      - name: Select simulator
         run: |
-          xcrun simctl boot "iPhone 17" 2>/dev/null || true
-          xcrun simctl bootstatus "iPhone 17" -b
+          # Pick the newest available iPhone simulator on this runner.
+          SIM_NAME=$(xcrun simctl list devices available 2>/dev/null \
+            | grep -E '"iPhone [0-9]' \
+            | sed "s/.*\"\(iPhone [^\"(]*\).*/\1/" \
+            | sed 's/[[:space:]]*$//' \
+            | sort -t' ' -k2 -V \
+            | tail -1)
+          if [ -z "$SIM_NAME" ]; then
+            echo "No available iPhone simulator found" >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          echo "Using simulator: $SIM_NAME"
+          xcrun simctl boot "$SIM_NAME" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM_NAME" -b
+          echo "SIMULATOR_NAME=$SIM_NAME" >> "$GITHUB_ENV"
 
       - name: Configure integration credentials
         env:

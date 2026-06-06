@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-SIM_NAME='iPhone 17'
+SIM_NAME="${SIMULATOR_NAME:-iPhone 17}"
 DESTINATION="platform=iOS Simulator,name=${SIM_NAME}"
 
 if [[ "${1:-}" == "--with-env" ]]; then
