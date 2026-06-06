@@ -15,30 +15,34 @@ jobs:
       - name: Select simulator
         run: |
           # simctl lists runtimes from ALL installed Xcodes (including betas).
-          # Restrict to the major iOS version the active Xcode's SDK targets so
-          # we don't accidentally pick an iOS 26 beta device for Xcode 16.
+          # Restrict to the major iOS version the active Xcode SDK targets.
           IOS_SDK=$(xcrun --sdk iphonesimulator --show-sdk-version)
           IOS_MAJOR="${IOS_SDK%%.*}"
           echo "Active Xcode iOS SDK: $IOS_SDK (major: $IOS_MAJOR)"
-          SIM_NAME=$(xcrun simctl list devices available 2>/dev/null \
+
+          # Pick the last (newest by sort -V) iPhone from the matching iOS section.
+          SELECTED=$(xcrun simctl list devices available 2>/dev/null \
             | awk -v major="$IOS_MAJOR" '
                 /^-- /{ p = ($0 ~ ("^-- iOS " major "\\.")) }
                 p && /iPhone [0-9]/
               ' \
-            | sed -E 's/^[[:space:]]*(iPhone [^(]+)\(.*/\1/' \
-            | sed 's/[[:space:]]*$//' \
-            | sort -u \
             | sort -V \
             | tail -1)
-          if [ -z "$SIM_NAME" ]; then
+
+          if [ -z "$SELECTED" ]; then
             echo "No compatible iPhone simulator found for iOS $IOS_MAJOR" >&2
             xcrun simctl list devices available >&2
             exit 1
           fi
-          echo "Using simulator: $SIM_NAME"
-          xcrun simctl boot "$SIM_NAME" 2>/dev/null || true
-          xcrun simctl bootstatus "$SIM_NAME" -b
+
+          SIM_NAME=$(echo "$SELECTED" | sed -E 's/^[[:space:]]*(iPhone [^(]+)\(.*/\1/' | sed 's/[[:space:]]*$//')
+          SIM_UDID=$(echo "$SELECTED" | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+
+          echo "Using simulator: $SIM_NAME ($SIM_UDID)"
+          xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM_UDID" -b
           echo "SIMULATOR_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+          echo "SIMULATOR_UDID=$SIM_UDID" >> "$GITHUB_ENV"
 
       - name: Configure integration credentials
         env:
