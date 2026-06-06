@@ -24,56 +24,86 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func setTemplate(animated: Bool) {
         guard let mqtt, let interfaceController else { return }
-        let connected = mqtt.connectionState == .connected
-        let template = CPGridTemplate(title: "ProvGate", gridButtons: makeButtons(enabled: connected))
+        let template = mqtt.connectionState == .connected ? makeStripTemplate() : makeConnectingTemplate()
         interfaceController.setRootTemplate(template, animated: animated, completion: nil)
     }
 
-    // 3-button row: Left | Right | Full Open (rightmost, visually dominant).
+    private func makeStripTemplate() -> CPListTemplate {
+        let specs = Self.buttonSpecs()
+        let images = specs.map { Self.stripImage(symbol: $0.symbol, label: $0.title, showsLeaf: !$0.prominent) }
+        let elements = images.map { CPListImageRowItemRowElement(image: $0, title: nil, subtitle: nil) }
+        let strip = CPListImageRowItem(text: "Outside view", elements: elements, allowsMultipleLines: false)
+        strip.handler = { _, completion in completion() }
+        strip.listImageRowHandler = { [weak self] _, index, completion in
+            guard index < specs.count else { completion(); return }
+            self?.mqtt?.sendCommand(specs[index].action)
+            completion()
+        }
+        return CPListTemplate(title: "ProvGate", sections: [CPListSection(items: [strip])])
+    }
+
+    private func makeConnectingTemplate() -> CPListTemplate {
+        let item = CPListItem(text: "Connecting to gate\u{2026}", detailText: nil)
+        return CPListTemplate(title: "ProvGate", sections: [CPListSection(items: [item])])
+    }
+
     // Pedestrian omitted — not needed in CarPlay context.
-    internal static func buttonSpecs() -> [(titles: [String], symbol: String, action: String, prominent: Bool)] {
+    // Directional actions use the outside perspective (left/right swapped).
+    internal static func buttonSpecs() -> [(title: String, symbol: String, action: String, prominent: Bool)] {
         [
-            (["Left (Outside)",   "Outside L", "Left"], "arrow.left",                        GateHelpers.resolvedAction("left",  isOutsideView: true), false),
-            (["Right (Outside)",  "Outside R", "Right"],"arrow.right",                      GateHelpers.resolvedAction("right", isOutsideView: true), false),
-            (["Full Open",        "Full"],               "arrow.up.left.and.arrow.down.right", "full",                                                 true),
+            ("Left",      "arrow.left",                         GateHelpers.resolvedAction("left",  isOutsideView: true), false),
+            ("Right",     "arrow.right",                        GateHelpers.resolvedAction("right", isOutsideView: true), false),
+            ("Full Open", "arrow.up.left.and.arrow.down.right", "full",                                                   true),
         ]
     }
 
-    private func makeButtons(enabled: Bool) -> [CPGridButton] {
-        return Self.buttonSpecs().map { spec in
-            let img = Self.buttonImage(symbol: spec.symbol, prominent: spec.prominent)
-            let btn = CPGridButton(titleVariants: spec.titles, image: img) { [weak self] _ in
-                self?.mqtt?.sendCommand(spec.action)
-            }
-            btn.isEnabled = enabled
-            return btn
-        }
-    }
+    // Blue rounded-rect button with white SF symbol, label, and optional leaf indicator — all
+    // inside the button, matching the phone UI. Horizontal padding is transparent to gap icons.
+    private static func stripImage(symbol: String, label: String, showsLeaf: Bool) -> UIImage {
+        let s = CPListImageRowItemRowElement.maximumImageSize
+        let hPad: CGFloat  = s.width * 0.18
+        let iconW: CGFloat = s.width - hPad * 2
 
-    // Renders the arrow glyph centred inside a rounded-rectangle border on a
-    // fixed square canvas. The uniform canvas size keeps every button's label
-    // vertically aligned, and the border gives each icon a tappable button look.
-    // Returned as a template image so CarPlay tints it for light/dark dashboards.
-    private static func buttonImage(symbol: String, prominent: Bool) -> UIImage {
-        let canvas = CGSize(width: 100, height: 100)
-        let renderer = UIGraphicsImageRenderer(size: canvas)
+        let symbolH: CGFloat = s.height * (showsLeaf ? 0.52 : 0.60)
+        let labelH: CGFloat  = s.height * (showsLeaf ? 0.26 : 0.40)
+        let leafH: CGFloat   = s.height - symbolH - labelH
+
+        let renderer = UIGraphicsImageRenderer(size: s)
         let image = renderer.image { _ in
-            let border = UIBezierPath(
-                roundedRect: CGRect(origin: .zero, size: canvas).insetBy(dx: 4, dy: 4),
-                cornerRadius: 18)
-            border.lineWidth = prominent ? 6 : 4
-            UIColor.black.setStroke()
-            border.stroke()
+            UIColor.systemBlue.setFill()
+            UIBezierPath(roundedRect: CGRect(x: hPad, y: 0, width: iconW, height: s.height),
+                         cornerRadius: iconW * 0.22).fill()
 
-            let weight: UIImage.SymbolWeight = prominent ? .black : .heavy
-            let config = UIImage.SymbolConfiguration(pointSize: 44, weight: weight)
+            let config = UIImage.SymbolConfiguration(pointSize: iconW * 0.40, weight: .semibold)
             if let glyph = UIImage(systemName: symbol, withConfiguration: config)?
-                .withTintColor(.black, renderingMode: .alwaysOriginal) {
-                glyph.draw(at: CGPoint(x: (canvas.width - glyph.size.width) / 2,
-                                       y: (canvas.height - glyph.size.height) / 2))
+                .withTintColor(.white, renderingMode: .alwaysOriginal) {
+                glyph.draw(at: CGPoint(
+                    x: hPad + (iconW - glyph.size.width) / 2,
+                    y: (symbolH - glyph.size.height) / 2
+                ))
+            }
+
+            let font = UIFont.systemFont(ofSize: iconW * 0.175, weight: .semibold)
+            let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
+            let str = label as NSString
+            let textSize = str.size(withAttributes: attrs)
+            str.draw(at: CGPoint(
+                x: (s.width - textSize.width) / 2,
+                y: symbolH + (labelH - textSize.height) / 2
+            ), withAttributes: attrs)
+
+            if showsLeaf {
+                let leafConfig = UIImage.SymbolConfiguration(pointSize: iconW * 0.16, weight: .medium)
+                if let leaf = UIImage(systemName: "leaf", withConfiguration: leafConfig)?
+                    .withTintColor(.white.withAlphaComponent(0.85), renderingMode: .alwaysOriginal) {
+                    leaf.draw(at: CGPoint(
+                        x: (s.width - leaf.size.width) / 2,
+                        y: symbolH + labelH + (leafH - leaf.size.height) / 2
+                    ))
+                }
             }
         }
-        return image.withRenderingMode(.alwaysTemplate)
+        return image.withRenderingMode(.alwaysOriginal)
     }
 
     private func observe() {

@@ -56,6 +56,22 @@ struct QuickActionTests {
     }
 }
 
+// MARK: - Topic prefix (dry run safety)
+
+struct TopicPrefixTests {
+    @Test func dryRunOnUsesDryRunPrefix() {
+        #expect(GateHelpers.topicPrefix(isDryRun: true) == "gate/test")
+    }
+
+    @Test func dryRunOffUsesRealPrefix() {
+        #expect(GateHelpers.topicPrefix(isDryRun: false) == "gate")
+    }
+
+    @Test func dryRunPrefixNeverEqualsRealPrefix() {
+        #expect(GateHelpers.topicPrefix(isDryRun: true) != GateHelpers.topicPrefix(isDryRun: false))
+    }
+}
+
 // MARK: - Correlation ID encoding
 
 struct CorrelationIdTests {
@@ -306,35 +322,38 @@ struct CarPlayButtonTests {
     }
 
     @Test func noPedestrianInCarPlay() {
-        #expect(!specs.contains { $0.titles.contains("Pedestrian") })
+        #expect(!specs.contains { $0.title == "Pedestrian" })
     }
 
     @Test func leftButtonUsesOutsidePerspective() {
-        let spec = specs.first { $0.titles.contains("Left") }!
+        let spec = specs.first { $0.title == "Left" }!
         #expect(spec.action == "right")
     }
 
     @Test func rightButtonUsesOutsidePerspective() {
-        let spec = specs.first { $0.titles.contains("Right") }!
+        let spec = specs.first { $0.title == "Right" }!
         #expect(spec.action == "left")
     }
 
     @Test func fullOpenActionIsCorrect() {
-        let full = specs.first { $0.titles.contains("Full Open") }!
+        let full = specs.first { $0.title == "Full Open" }!
         #expect(full.action == "full")
     }
 
     @Test func fullOpenIsProminentAndOthersAreNot() {
-        let full   = specs.first { $0.titles.contains("Full Open") }!
-        let others = specs.filter { !$0.titles.contains("Full Open") }
+        let full   = specs.first { $0.title == "Full Open" }!
+        let others = specs.filter { $0.title != "Full Open" }
         #expect(full.prominent == true)
         #expect(others.allSatisfy { !$0.prominent })
     }
 
-    @Test func leftAndRightTitlesIncludeOutside() {
-        let left  = specs.first { $0.titles.contains("Left") }!
-        let right = specs.first { $0.titles.contains("Right") }!
-        #expect(left.titles.contains("Left (Outside)"))
-        #expect(right.titles.contains("Right (Outside)"))
+    @Test func directionalButtonsAreNotProminent() {
+        let directional = specs.filter { $0.title == "Left" || $0.title == "Right" }
+        #expect(directional.count == 2)
+        #expect(directional.allSatisfy { !$0.prominent })
+    }
+
+    @Test func fullOpenIsLast() {
+        #expect(specs.last?.title == "Full Open")
     }
 }

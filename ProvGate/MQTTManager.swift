@@ -52,7 +52,7 @@ final class MQTTManager: NSObject {
     }
     #endif
 
-    private var topicPrefix: String { isDryRun ? "gate/test" : "gate" }
+    private var topicPrefix: String { GateHelpers.topicPrefix(isDryRun: isDryRun) }
 
     // MARK: - Public interface
 
