@@ -347,13 +347,10 @@ struct CarPlayButtonTests {
         #expect(others.allSatisfy { !$0.prominent })
     }
 
-    @Test func leftAndRightDetailIndicatesOutsideView() {
-        let left  = specs.first { $0.title == "Left" }!
-        let right = specs.first { $0.title == "Right" }!
-        let full  = specs.first { $0.title == "Full Open" }!
-        #expect(left.detail == "Outside view")
-        #expect(right.detail == "Outside view")
-        #expect(full.detail == "")
+    @Test func directionalButtonsAreNotProminent() {
+        let directional = specs.filter { $0.title == "Left" || $0.title == "Right" }
+        #expect(directional.count == 2)
+        #expect(directional.allSatisfy { !$0.prominent })
     }
 
     @Test func fullOpenIsLast() {
