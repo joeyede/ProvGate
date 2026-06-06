@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Boot simulator
+        run: |
+          xcrun simctl boot "iPhone 17" 2>/dev/null || true
+          xcrun simctl bootstatus "iPhone 17" -b
+
+      - name: Configure integration credentials
+        env:
+          PROVGATE_TEST_USERNAME: ${{ secrets.PROVGATE_TEST_USERNAME }}
+          PROVGATE_TEST_PASSWORD: ${{ secrets.PROVGATE_TEST_PASSWORD }}
+        run: |
+          if [ -n "$PROVGATE_TEST_USERNAME" ]; then
+            printf 'export PROVGATE_TEST_USERNAME="%s"\nexport PROVGATE_TEST_PASSWORD="%s"\n' \
+              "$PROVGATE_TEST_USERNAME" "$PROVGATE_TEST_PASSWORD" > ~/.provgate-test-env
+          fi
+
+      - name: Run tests
+        run: |
+          if [ -f ~/.provgate-test-env ]; then
+            bash scripts/run-tests.sh --with-env
+          else
+            bash scripts/run-tests.sh
+          fi

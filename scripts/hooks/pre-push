@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-push hook: run unit tests before every push.
+# Install: bash scripts/install-hooks.sh
+
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "Running unit tests before push…"
+bash "$ROOT/scripts/run-tests.sh"
+echo "Tests passed — push allowed."
