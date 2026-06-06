@@ -25,55 +25,48 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private func setTemplate(animated: Bool) {
         guard let mqtt, let interfaceController else { return }
         let connected = mqtt.connectionState == .connected
-        let template = CPGridTemplate(title: "ProvGate", gridButtons: makeButtons(enabled: connected))
+        let template: CPListTemplate
+        if connected {
+            let items = Self.buttonSpecs().map { spec -> CPListItem in
+                let item = CPListItem(
+                    text: spec.title,
+                    detailText: spec.detail,
+                    image: Self.listImage(symbol: spec.symbol, prominent: spec.prominent)
+                )
+                item.handler = { [weak self] _, completion in
+                    self?.mqtt?.sendCommand(spec.action)
+                    completion()
+                }
+                return item
+            }
+            let section = CPListSection(items: items, header: "Actions", sectionIndexTitle: nil)
+            template = CPListTemplate(title: "ProvGate", sections: [section])
+        } else {
+            let item = CPListItem(text: "Connecting to gate\u{2026}", detailText: nil)
+            let section = CPListSection(items: [item])
+            template = CPListTemplate(title: "ProvGate", sections: [section])
+        }
         interfaceController.setRootTemplate(template, animated: animated, completion: nil)
     }
 
-    // 3-button row: Left | Right | Full Open (rightmost, visually dominant).
     // Pedestrian omitted — not needed in CarPlay context.
-    internal static func buttonSpecs() -> [(titles: [String], symbol: String, action: String, prominent: Bool)] {
+    // Directional actions use the outside perspective (left/right swapped).
+    internal static func buttonSpecs() -> [(title: String, detail: String, symbol: String, action: String, prominent: Bool)] {
         [
-            (["Left (Outside)",   "Outside L", "Left"], "arrow.left",                        GateHelpers.resolvedAction("left",  isOutsideView: true), false),
-            (["Right (Outside)",  "Outside R", "Right"],"arrow.right",                      GateHelpers.resolvedAction("right", isOutsideView: true), false),
-            (["Full Open",        "Full"],               "arrow.up.left.and.arrow.down.right", "full",                                                 true),
+            ("Full Open", "",             "arrow.up.left.and.arrow.down.right",  "full",                                                   true),
+            ("Left",      "Outside view", "arrow.left",                          GateHelpers.resolvedAction("left",  isOutsideView: true), false),
+            ("Right",     "Outside view", "arrow.right",                         GateHelpers.resolvedAction("right", isOutsideView: true), false),
         ]
     }
 
-    private func makeButtons(enabled: Bool) -> [CPGridButton] {
-        return Self.buttonSpecs().map { spec in
-            let img = Self.buttonImage(symbol: spec.symbol, prominent: spec.prominent)
-            let btn = CPGridButton(titleVariants: spec.titles, image: img) { [weak self] _ in
-                self?.mqtt?.sendCommand(spec.action)
-            }
-            btn.isEnabled = enabled
-            return btn
-        }
-    }
-
-    // Renders the arrow glyph centred inside a rounded-rectangle border on a
-    // fixed square canvas. The uniform canvas size keeps every button's label
-    // vertically aligned, and the border gives each icon a tappable button look.
-    // Returned as a template image so CarPlay tints it for light/dark dashboards.
-    private static func buttonImage(symbol: String, prominent: Bool) -> UIImage {
-        let canvas = CGSize(width: 100, height: 100)
-        let renderer = UIGraphicsImageRenderer(size: canvas)
-        let image = renderer.image { _ in
-            let border = UIBezierPath(
-                roundedRect: CGRect(origin: .zero, size: canvas).insetBy(dx: 4, dy: 4),
-                cornerRadius: 18)
-            border.lineWidth = prominent ? 6 : 4
-            UIColor.black.setStroke()
-            border.stroke()
-
-            let weight: UIImage.SymbolWeight = prominent ? .black : .heavy
-            let config = UIImage.SymbolConfiguration(pointSize: 44, weight: weight)
-            if let glyph = UIImage(systemName: symbol, withConfiguration: config)?
-                .withTintColor(.black, renderingMode: .alwaysOriginal) {
-                glyph.draw(at: CGPoint(x: (canvas.width - glyph.size.width) / 2,
-                                       y: (canvas.height - glyph.size.height) / 2))
-            }
-        }
-        return image.withRenderingMode(.alwaysTemplate)
+    // Full-color SF Symbol for list row leading image.
+    private static func listImage(symbol: String, prominent: Bool) -> UIImage {
+        let pointSize: CGFloat = prominent ? 28 : 24
+        let weight: UIImage.SymbolWeight = prominent ? .black : .semibold
+        let color: UIColor = prominent ? .systemBlue : .label
+        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+        return (UIImage(systemName: symbol, withConfiguration: config) ?? UIImage())
+            .withTintColor(color, renderingMode: .alwaysOriginal)
     }
 
     private func observe() {

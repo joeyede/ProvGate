@@ -306,35 +306,41 @@ struct CarPlayButtonTests {
     }
 
     @Test func noPedestrianInCarPlay() {
-        #expect(!specs.contains { $0.titles.contains("Pedestrian") })
+        #expect(!specs.contains { $0.title == "Pedestrian" })
     }
 
     @Test func leftButtonUsesOutsidePerspective() {
-        let spec = specs.first { $0.titles.contains("Left") }!
+        let spec = specs.first { $0.title == "Left" }!
         #expect(spec.action == "right")
     }
 
     @Test func rightButtonUsesOutsidePerspective() {
-        let spec = specs.first { $0.titles.contains("Right") }!
+        let spec = specs.first { $0.title == "Right" }!
         #expect(spec.action == "left")
     }
 
     @Test func fullOpenActionIsCorrect() {
-        let full = specs.first { $0.titles.contains("Full Open") }!
+        let full = specs.first { $0.title == "Full Open" }!
         #expect(full.action == "full")
     }
 
     @Test func fullOpenIsProminentAndOthersAreNot() {
-        let full   = specs.first { $0.titles.contains("Full Open") }!
-        let others = specs.filter { !$0.titles.contains("Full Open") }
+        let full   = specs.first { $0.title == "Full Open" }!
+        let others = specs.filter { $0.title != "Full Open" }
         #expect(full.prominent == true)
         #expect(others.allSatisfy { !$0.prominent })
     }
 
-    @Test func leftAndRightTitlesIncludeOutside() {
-        let left  = specs.first { $0.titles.contains("Left") }!
-        let right = specs.first { $0.titles.contains("Right") }!
-        #expect(left.titles.contains("Left (Outside)"))
-        #expect(right.titles.contains("Right (Outside)"))
+    @Test func leftAndRightDetailIndicatesOutsideView() {
+        let left  = specs.first { $0.title == "Left" }!
+        let right = specs.first { $0.title == "Right" }!
+        let full  = specs.first { $0.title == "Full Open" }!
+        #expect(left.detail == "Outside view")
+        #expect(right.detail == "Outside view")
+        #expect(full.detail == "")
+    }
+
+    @Test func fullOpenIsFirst() {
+        #expect(specs[0].title == "Full Open")
     }
 }
