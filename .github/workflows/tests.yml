@@ -24,26 +24,25 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
-          # Ground truth: ask xcodebuild which destinations it can actually use,
-          # and grab the newest concrete iPhone simulator id. This is fast (~20s)
-          # so a bad setup fails here in under a minute, not after a full build.
-          DEST=$(xcodebuild -project ProvGate.xcodeproj -scheme ProvGate -showdestinations 2>/dev/null \
-            | grep 'platform:iOS Simulator' \
-            | grep 'name:iPhone' \
-            | grep -v 'placeholder' \
+          # Pick a concrete iPhone simulator whose runtime matches this Xcode's
+          # iOS SDK major version. simctl lists devices from all Xcodes, so we
+          # restrict to the active SDK's major to guarantee xcodebuild can use it.
+          IOS_MAJOR=$(xcrun --sdk iphonesimulator --show-sdk-version | cut -d. -f1)
+          echo "Active iOS SDK major: $IOS_MAJOR"
+          SELECTED=$(xcrun simctl list devices available 2>/dev/null \
+            | awk -v major="$IOS_MAJOR" '
+                /^-- /{ p = ($0 ~ ("^-- iOS " major "\\.")) }
+                p && /iPhone [0-9]/
+              ' \
             | sort -V \
-            | tail -1 || true)
-          if [ -z "$DEST" ]; then
-            echo "No concrete iOS Simulator destination available." >&2
-            xcodebuild -project ProvGate.xcodeproj -scheme ProvGate -showdestinations 2>&1 | tail -40 >&2
+            | tail -1)
+          if [ -z "$SELECTED" ]; then
+            echo "No iOS $IOS_MAJOR iPhone simulator found." >&2
+            xcrun simctl list devices available >&2
             exit 1
           fi
-          echo "Destination: $DEST"
-          SIM_UDID=$(echo "$DEST" | grep -oE 'id:[0-9A-Fa-f-]+' | head -1 | cut -d: -f2)
-          if [ -z "$SIM_UDID" ]; then
-            echo "Could not parse simulator id from: $DEST" >&2
-            exit 1
-          fi
+          SIM_UDID=$(echo "$SELECTED" | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+          echo "Selected:$SELECTED"
           echo "Booting $SIM_UDID"
           xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$SIM_UDID" -b || true
