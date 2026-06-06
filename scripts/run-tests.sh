@@ -20,6 +20,15 @@ SIM_NAME='iPhone 17'
 DESTINATION="platform=iOS Simulator,name=${SIM_NAME}"
 
 if [[ "${1:-}" == "--with-env" ]]; then
+    # The gate-emulator subscribes to gate/test/control and ACKs back on the response
+    # topic. If it's running, integration tests that expect NO reply (e.g.
+    # timeoutThrowsWhenNoResponseArrives) get an answer and fail. Refuse to run.
+    if pgrep -f 'gate-emulator' >/dev/null 2>&1; then
+        echo "error: gate-emulator is running (PID $(pgrep -f 'gate-emulator' | tr '\n' ' ')) — it replies on dry-run topics and breaks integration tests." >&2
+        echo "       Stop it first:  pkill -f gate-emulator" >&2
+        exit 1
+    fi
+
     # shellcheck source=/dev/null
     source ~/.provgate-test-env
     # Ensure the simulator is booted, then push credentials into its launchd environment
