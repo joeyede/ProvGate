@@ -75,7 +75,7 @@ final class GateCommandSender: NSObject, @unchecked Sendable {
         guard creds.rememberMe, let username = creds.username, let password = creds.password else {
             throw GateCommandError.noCredentials
         }
-        topicPrefix = (defaults?.bool(forKey: "provgate.isDryRun") ?? false) ? "gate/test" : "gate"
+        topicPrefix = GateHelpers.topicPrefix(isDryRun: defaults?.bool(forKey: "provgate.isDryRun") ?? false)
 
         // Register defer before connecting so disconnect runs even on timeout.
         defer { client?.disconnect() }

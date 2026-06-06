@@ -56,6 +56,22 @@ struct QuickActionTests {
     }
 }
 
+// MARK: - Topic prefix (dry run safety)
+
+struct TopicPrefixTests {
+    @Test func dryRunOnUsesDryRunPrefix() {
+        #expect(GateHelpers.topicPrefix(isDryRun: true) == "gate/test")
+    }
+
+    @Test func dryRunOffUsesRealPrefix() {
+        #expect(GateHelpers.topicPrefix(isDryRun: false) == "gate")
+    }
+
+    @Test func dryRunPrefixNeverEqualsRealPrefix() {
+        #expect(GateHelpers.topicPrefix(isDryRun: true) != GateHelpers.topicPrefix(isDryRun: false))
+    }
+}
+
 // MARK: - Correlation ID encoding
 
 struct CorrelationIdTests {
@@ -340,7 +356,7 @@ struct CarPlayButtonTests {
         #expect(full.detail == "")
     }
 
-    @Test func fullOpenIsFirst() {
-        #expect(specs[0].title == "Full Open")
+    @Test func fullOpenIsLast() {
+        #expect(specs.last?.title == "Full Open")
     }
 }

@@ -27,19 +27,15 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         let connected = mqtt.connectionState == .connected
         let template: CPListTemplate
         if connected {
-            let items = Self.buttonSpecs().map { spec -> CPListItem in
-                let item = CPListItem(
-                    text: spec.title,
-                    detailText: spec.detail,
-                    image: Self.listImage(symbol: spec.symbol, prominent: spec.prominent)
-                )
-                item.handler = { [weak self] _, completion in
-                    self?.mqtt?.sendCommand(spec.action)
-                    completion()
-                }
-                return item
+            let specs = Self.buttonSpecs()
+            let images = specs.map { Self.stripImage(symbol: $0.symbol, prominent: $0.prominent) }
+            let strip = CPListImageRowItem(text: "Outside view", images: images)
+            strip.listImageRowHandler = { [weak self] _, index, completion in
+                guard index < specs.count else { completion(); return }
+                self?.mqtt?.sendCommand(specs[index].action)
+                completion()
             }
-            let section = CPListSection(items: items, header: "Actions", sectionIndexTitle: nil)
+            let section = CPListSection(items: [strip])
             template = CPListTemplate(title: "ProvGate", sections: [section])
         } else {
             let item = CPListItem(text: "Connecting to gate\u{2026}", detailText: nil)
@@ -53,20 +49,34 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     // Directional actions use the outside perspective (left/right swapped).
     internal static func buttonSpecs() -> [(title: String, detail: String, symbol: String, action: String, prominent: Bool)] {
         [
-            ("Full Open", "",             "arrow.up.left.and.arrow.down.right",  "full",                                                   true),
             ("Left",      "Outside view", "arrow.left",                          GateHelpers.resolvedAction("left",  isOutsideView: true), false),
             ("Right",     "Outside view", "arrow.right",                         GateHelpers.resolvedAction("right", isOutsideView: true), false),
+            ("Full Open", "",             "arrow.up.left.and.arrow.down.right",  "full",                                                   true),
         ]
     }
 
-    // Full-color SF Symbol for list row leading image.
-    private static func listImage(symbol: String, prominent: Bool) -> UIImage {
-        let pointSize: CGFloat = prominent ? 28 : 24
-        let weight: UIImage.SymbolWeight = prominent ? .black : .semibold
-        let color: UIColor = prominent ? .systemBlue : .label
-        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
-        return (UIImage(systemName: symbol, withConfiguration: config) ?? UIImage())
-            .withTintColor(color, renderingMode: .alwaysOriginal)
+    // Colored rounded-rect button image for the image strip.
+    private static func stripImage(symbol: String, prominent: Bool) -> UIImage {
+        let size = CPListImageRowItem.maximumImageSize
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { _ in
+            let rect = CGRect(origin: .zero, size: size)
+            let bg = UIBezierPath(roundedRect: rect, cornerRadius: size.width * 0.22)
+            (prominent ? UIColor.systemBlue : UIColor.secondarySystemFill).setFill()
+            bg.fill()
+
+            let weight: UIImage.SymbolWeight = prominent ? .black : .semibold
+            let config = UIImage.SymbolConfiguration(pointSize: size.width * 0.42, weight: weight)
+            let tint: UIColor = prominent ? .white : .label
+            if let glyph = UIImage(systemName: symbol, withConfiguration: config)?
+                .withTintColor(tint, renderingMode: .alwaysOriginal) {
+                glyph.draw(at: CGPoint(
+                    x: (size.width  - glyph.size.width)  / 2,
+                    y: (size.height - glyph.size.height) / 2
+                ))
+            }
+        }
+        return image.withRenderingMode(.alwaysOriginal)
     }
 
     private func observe() {

@@ -244,16 +244,17 @@ struct GateCommandSenderIntegrationTests {
         return store
     }
 
-    private func makeDryRunDefaults(enabled: Bool) -> UserDefaults {
+    // Always dry-run in tests — gate-remote only subscribes to gate/control, never gate/test/control.
+    private func makeDryRunDefaults() -> UserDefaults {
         let d = UserDefaults(suiteName: "ProvGate.integration.test.dryRun")!
-        d.set(enabled, forKey: "provgate.isDryRun")
+        d.set(true, forKey: "provgate.isDryRun")
         return d
     }
 
     @Test func sendFullPublishesCorrectControlPayloadAndResolvesOnResponse() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let observer = MQTTTestObserver(username: config.username, password: config.password)
@@ -285,7 +286,7 @@ struct GateCommandSenderIntegrationTests {
     @Test func sendPedestrianPublishesCorrectAction() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let observer = MQTTTestObserver(username: config.username, password: config.password)
@@ -308,43 +309,10 @@ struct GateCommandSenderIntegrationTests {
         try await sendResult
     }
 
-    @Test func dryRunOffPublishesOnRealTopic() async throws {
-        let config = loadIntegrationConfig()!
-        let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: false)
-        defer { store.clear() }
-
-        let observer = MQTTTestObserver(username: config.username, password: config.password)
-        try await observer.connect()
-        defer { observer.disconnect() }
-        // Subscribe to BOTH topics; we'll assert the dry-run topic does NOT receive.
-        try await observer.subscribe("gate/control")
-
-        // We never reply — just check that the sender publishes to gate/control (not gate/test/control)
-        // and let the wait-for-response time out. That's acceptable for this test.
-        let sendTask: Task<Error?, Never> = Task {
-            do {
-                try await GateCommandSender.sendForTesting(action: "pedestrian", store: store, defaults: defaults)
-                return nil
-            } catch {
-                return error
-            }
-        }
-
-        let msg = try await observer.waitForMessage(timeout: 10) { $0.topic == "gate/control" }
-        let json = try JSONSerialization.jsonObject(with: Data(msg.payload.utf8)) as? [String: Any]
-        #expect(json?["action"] as? String == "pedestrian")
-        #expect(msg.responseTopic?.hasPrefix("gate/responses/") == true)
-
-        // Cancel the sender — we never replied, no need to wait for its 10s timeout.
-        sendTask.cancel()
-        _ = await sendTask.value
-    }
-
     @Test func timeoutThrowsWhenNoResponseArrives() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let observer = MQTTTestObserver(username: config.username, password: config.password)
@@ -369,7 +337,7 @@ struct GateCommandSenderIntegrationTests {
         // Fresh isolated store, no credentials saved.
         let store = CredentialsStore(service: "ProvGate.MQTT.integration.empty")
         store.clear()
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
 
         let start = Date()
         do {
@@ -398,9 +366,10 @@ struct MQTTManagerIntegrationTests {
         return store
     }
 
-    private func makeDryRunDefaults(enabled: Bool) -> UserDefaults {
+    // Always dry-run in tests — gate-remote only subscribes to gate/control, never gate/test/control.
+    private func makeDryRunDefaults() -> UserDefaults {
         let d = UserDefaults(suiteName: "ProvGate.integration.test.manager.dryRun")!
-        d.set(enabled, forKey: "provgate.isDryRun")
+        d.set(true, forKey: "provgate.isDryRun")
         return d
     }
 
@@ -418,7 +387,7 @@ struct MQTTManagerIntegrationTests {
     @Test func startupConnectsWhenCredentialsArePresent() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let mqtt = MQTTManager(store: store, defaults: defaults)
@@ -432,7 +401,7 @@ struct MQTTManagerIntegrationTests {
     @Test func gateStatusUpdatesWhenObserverPublishesToStatusTopic() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let mqtt = MQTTManager(store: store, defaults: defaults)
@@ -456,7 +425,7 @@ struct MQTTManagerIntegrationTests {
     @Test func sendCommandPublishesAndCorrelatesResponse() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let mqtt = MQTTManager(store: store, defaults: defaults)
@@ -496,7 +465,7 @@ struct MQTTManagerIntegrationTests {
     @Test func sendCommandOutsidePerspectiveSwapsLeftToRightOnTheWire() async throws {
         let config = loadIntegrationConfig()!
         let store = makeTestStore(seedingFrom: config)
-        let defaults = makeDryRunDefaults(enabled: true)
+        let defaults = makeDryRunDefaults()
         defer { store.clear() }
 
         let mqtt = MQTTManager(store: store, defaults: defaults)

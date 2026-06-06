@@ -12,6 +12,12 @@ enum GateHelpers {
         return action
     }
 
+    // Returns the MQTT topic prefix for the current dry-run mode.
+    // Dry-run uses gate/test/... so gate-remote (which only subscribes to gate/...) never fires.
+    nonisolated static func topicPrefix(isDryRun: Bool) -> String {
+        isDryRun ? "gate/test" : "gate"
+    }
+
     // CocoaMQTT5 expects correlationData in MQTT5 Binary Data wire format:
     // a 2-byte big-endian length prefix followed by the raw bytes. The library
     // strips the prefix before delivering corrData to didReceiveMessage.
