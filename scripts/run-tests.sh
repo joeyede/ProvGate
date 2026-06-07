@@ -16,8 +16,14 @@
 
 set -euo pipefail
 
-SIM_NAME='iPhone 17'
-DESTINATION="platform=iOS Simulator,name=${SIM_NAME}"
+SIM_NAME="${SIMULATOR_NAME:-iPhone 17}"
+# Prefer UDID when provided by CI (avoids ambiguity when multiple simulators
+# share the same name across iOS versions).
+if [ -n "${SIMULATOR_UDID:-}" ]; then
+    DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"
+else
+    DESTINATION="platform=iOS Simulator,name=${SIM_NAME}"
+fi
 
 if [[ "${1:-}" == "--with-env" ]]; then
     # The gate-emulator subscribes to gate/test/control and ACKs back on the response
@@ -32,15 +38,22 @@ if [[ "${1:-}" == "--with-env" ]]; then
     # shellcheck source=/dev/null
     source ~/.provgate-test-env
     # Ensure the simulator is booted, then push credentials into its launchd environment
-    # so the in-simulator test process inherits them.
-    xcrun simctl bootstatus "$SIM_NAME" -b >/dev/null 2>&1 || xcrun simctl boot "$SIM_NAME" 2>/dev/null || true
+    # so the in-simulator test process inherits them. Prefer the UDID (CI) over name.
+    SIM_REF="${SIMULATOR_UDID:-$SIM_NAME}"
+    xcrun simctl bootstatus "$SIM_REF" -b >/dev/null 2>&1 || xcrun simctl boot "$SIM_REF" 2>/dev/null || true
     xcrun simctl spawn booted launchctl setenv PROVGATE_TEST_USERNAME "${PROVGATE_TEST_USERNAME:-}"
     xcrun simctl spawn booted launchctl setenv PROVGATE_TEST_PASSWORD "${PROVGATE_TEST_PASSWORD:-}"
 fi
 
+# Run xcodebuild and filter its output, but propagate xcodebuild's exit code.
+# `|| true` would silently mask failures, so we capture PIPESTATUS explicitly.
+set +e
 xcodebuild test \
     -project ProvGate.xcodeproj \
     -scheme ProvGate \
     -destination "$DESTINATION" \
     -only-testing:ProvGateTests \
-    2>&1 | grep -E "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|error:" || true
+    2>&1 | grep -E "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|error:"
+XCODE_STATUS="${PIPESTATUS[0]}"
+set -e
+[ "$XCODE_STATUS" -eq 0 ]

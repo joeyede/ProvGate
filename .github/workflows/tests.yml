@@ -1,0 +1,72 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode and simulator
+        run: |
+          set -euo pipefail
+          # The runner ships several Xcodes. The default is often an older one
+          # whose simulators xcodebuild cannot use for testing — xcodebuild then
+          # falls back to "My Mac" (a documented behaviour: when no matching
+          # simulator is found it picks macOS as the first available destination).
+          # Select the NEWEST installed Xcode; it lines up with local dev
+          # (iPhone 17 / iOS 26).
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Selecting $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+          # Pick the newest iPhone from the NEWEST registered iOS runtime section.
+          # `simctl list devices available` only lists devices whose runtime is
+          # registered with the active Xcode, and the newest section corresponds
+          # to that Xcode's bundled runtime — so targeting this device by its
+          # exact UDID is guaranteed to match (no "My Mac" fallback).
+          NEWEST_SECTION=$(xcrun simctl list devices available 2>/dev/null \
+            | grep -E '^-- iOS ' | sort -V | tail -1)
+          echo "Newest runtime: $NEWEST_SECTION"
+          SELECTED=$(xcrun simctl list devices available 2>/dev/null \
+            | awk -v sec="$NEWEST_SECTION" '
+                /^-- /{ p = ($0 == sec) }
+                p && /iPhone [0-9]/
+              ' \
+            | sort -V \
+            | tail -1)
+          if [ -z "$SELECTED" ]; then
+            echo "No iPhone simulator found in $NEWEST_SECTION" >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          SIM_UDID=$(echo "$SELECTED" | grep -oiE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+          echo "Selected:$SELECTED"
+          echo "Booting $SIM_UDID"
+          xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM_UDID" -b || true
+          echo "SIMULATOR_UDID=$SIM_UDID" >> "$GITHUB_ENV"
+
+      - name: Configure integration credentials
+        env:
+          PROVGATE_TEST_USERNAME: ${{ secrets.PROVGATE_TEST_USERNAME }}
+          PROVGATE_TEST_PASSWORD: ${{ secrets.PROVGATE_TEST_PASSWORD }}
+        run: |
+          if [ -n "$PROVGATE_TEST_USERNAME" ]; then
+            printf 'export PROVGATE_TEST_USERNAME="%s"\nexport PROVGATE_TEST_PASSWORD="%s"\n' \
+              "$PROVGATE_TEST_USERNAME" "$PROVGATE_TEST_PASSWORD" > ~/.provgate-test-env
+          fi
+
+      - name: Run tests
+        run: |
+          if [ -f ~/.provgate-test-env ]; then
+            bash scripts/run-tests.sh --with-env
+          else
+            bash scripts/run-tests.sh
+          fi
