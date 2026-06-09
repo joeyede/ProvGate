@@ -41,12 +41,11 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     }
 
     private func refreshTemplate() {
-        guard let mqtt else { return }
-        if mqtt.connectionState == .connected, let template = connectedTemplate {
-            template.updateSections(makeSections())
-        } else {
-            setTemplate(animated: true)
-        }
+        // Always recreate via setRootTemplate rather than updateSections — CarPlay's
+        // first updateSections call after setRootTemplate triggers a layout recalculation
+        // that causes a visible aspect shift. setRootTemplate(animated:false) is instant.
+        let animated = connectedTemplate == nil || mqtt?.connectionState != .connected
+        setTemplate(animated: animated)
     }
 
     // Three-column layout: left info/toggle panel + two action buttons per row.
@@ -60,9 +59,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
         func buttonEl(_ i: Int) -> CPListImageRowItemRowElement {
             let s = specs[i]
+            let indicator: String? = i >= 2 ? (isOutside ? "leaf" : "house") : nil
             return CPListImageRowItemRowElement(
                 image: Self.buttonImage(symbol: s.symbol, label: s.title, prominent: s.prominent,
-                                        dimmed: s.action == sendingAction),
+                                        dimmed: s.action == sendingAction, indicator: indicator),
                 title: nil, subtitle: nil
             )
         }
@@ -107,7 +107,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     }
 
     private func makeConnectingTemplate() -> CPListTemplate {
-        let item = CPListItem(text: "Connecting to gate\u{2026}", detailText: nil)
+        let text: String
+        if mqtt?.connectionState == .disconnected {
+            text = "Please log in on your iPhone"
+        } else {
+            text = "Connecting to gate\u{2026}"
+        }
+        let item = CPListItem(text: text, detailText: nil)
         return CPListTemplate(title: "ProvGate", sections: [CPListSection(items: [item])])
     }
 
@@ -122,10 +128,14 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     }
 
     // Blue (or gray when dimmed) rounded-rect with SF symbol + label — matches GateButton style.
-    private static func buttonImage(symbol: String, label: String, prominent: Bool, dimmed: Bool = false) -> UIImage {
+    // Pass indicator ("leaf" or "house") to show a small perspective icon below the label.
+    private static func buttonImage(symbol: String, label: String, prominent: Bool,
+                                    dimmed: Bool = false, indicator: String? = nil) -> UIImage {
         let s = CPListImageRowItemRowElement.maximumImageSize
-        let symbolH = s.height * 0.58
-        let labelH  = s.height - symbolH
+        let hasIndicator = indicator != nil
+        let symbolH: CGFloat = s.height * (hasIndicator ? 0.50 : 0.58)
+        let labelH:  CGFloat = s.height * (hasIndicator ? 0.28 : 0.42)
+        let indicatorH: CGFloat = s.height - symbolH - labelH
         let renderer = UIGraphicsImageRenderer(size: s)
         return renderer.image { _ in
             (dimmed ? UIColor.systemGray : UIColor.systemBlue).setFill()
@@ -150,6 +160,17 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 x: (s.width - textSize.width) / 2,
                 y: symbolH + (labelH - textSize.height) / 2
             ), withAttributes: attrs)
+
+            if let indicator {
+                let iConfig = UIImage.SymbolConfiguration(pointSize: s.width * 0.16, weight: .medium)
+                if let icon = UIImage(systemName: indicator, withConfiguration: iConfig)?
+                    .withTintColor(.white.withAlphaComponent(0.8), renderingMode: .alwaysOriginal) {
+                    icon.draw(at: CGPoint(
+                        x: (s.width - icon.size.width) / 2,
+                        y: symbolH + labelH + (indicatorH - icon.size.height) / 2
+                    ))
+                }
+            }
         }.withRenderingMode(.alwaysOriginal)
     }
 
