@@ -21,7 +21,9 @@ final class MQTTManager: NSObject {
     private(set) var sendingAction: String? = nil
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
-
+    private(set) var gateOnline: Bool? = nil
+    struct CommandResult { let action: String; let success: Bool }
+    private(set) var lastCommandResult: CommandResult? = nil
 
     @ObservationIgnored private var client: CocoaMQTT5?
     @ObservationIgnored private var pendingCommands: [String: String] = [:]
@@ -29,6 +31,9 @@ final class MQTTManager: NSObject {
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored private var heartbeatWatchdog: Task<Void, Never>?
+    @ObservationIgnored private var sendingStartedAt: Date?
+    private static let minSendingDisplaySeconds = 0.7
     private(set) var reconnectAttempt = 0
     static let maxReconnectAttempts = 5
     private static let connectionTimeoutSeconds = 10.0
@@ -91,6 +96,7 @@ final class MQTTManager: NSObject {
         statusMessage = "Disconnected"
         connectionError = nil
         sendingAction = nil
+        lastCommandResult = nil
         notify("Logged out successfully")
     }
 
@@ -104,6 +110,8 @@ final class MQTTManager: NSObject {
         let actual = GateHelpers.resolvedAction(action, isOutsideView: isOutsideView)
 
         sendingAction = action
+        sendingStartedAt = Date()
+        lastCommandResult = nil
 
         let correlationId = UUID().uuidString
         pendingCommands[correlationId] = action
@@ -206,9 +214,27 @@ final class MQTTManager: NSObject {
     private func teardown() {
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
+        heartbeatWatchdog?.cancel()
+        heartbeatWatchdog = nil
+        gateOnline = nil
         client?.disconnect()
         client = nil
         pendingCommands.removeAll()
+    }
+
+    private func clearSending(for action: String) {
+        guard sendingAction == action else { return }
+        let elapsed = sendingStartedAt.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
+        let remaining = max(0, Self.minSendingDisplaySeconds - elapsed)
+        if remaining == 0 {
+            sendingAction = nil
+        } else {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(remaining))
+                guard let self, self.sendingAction == action else { return }
+                self.sendingAction = nil
+            }
+        }
     }
 
     private func cancelReconnect() {
@@ -298,6 +324,12 @@ extension MQTTManager: CocoaMQTT5Delegate {
             guard let self else { return }
             if topic == "\(topicPrefix)/status" {
                 gateStatus = payload
+                gateOnline = true
+                heartbeatWatchdog?.cancel()
+                heartbeatWatchdog = Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(150))
+                    self?.gateOnline = false
+                }
                 return
             }
             guard topic.hasPrefix("\(topicPrefix)/responses/") else { return }
@@ -309,19 +341,24 @@ extension MQTTManager: CocoaMQTT5Delegate {
             else { return }
             let success = (json["status"] as? String) == "success"
             let action = pendingCommands.removeValue(forKey: correlationId)
-            if let action { statusMessage = "\(action.capitalized): \(success ? "Success" : "Failed")" }
+            if let action {
+                statusMessage = "\(action.capitalized): \(success ? "Success" : "Failed")"
+                lastCommandResult = CommandResult(action: action, success: success)
+                clearSending(for: action)
+            }
         }
     }
 
-    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didPublishAck id: UInt16, pubAckData: MqttDecodePubAck?) {
-        Task { @MainActor [weak self] in self?.sendingAction = nil }
-    }
+    nonisolated func mqtt5(_ mqtt5: CocoaMQTT5, didPublishAck id: UInt16, pubAckData: MqttDecodePubAck?) {}
 
     nonisolated func mqtt5DidDisconnect(_ mqtt5: CocoaMQTT5, withError err: Error?) {
         Task { @MainActor [weak self] in
             guard let self, mqtt5 === client,
                   connectionState == .connected || connectionState == .connecting else { return }
             sendingAction = nil
+            heartbeatWatchdog?.cancel()
+            heartbeatWatchdog = nil
+            gateOnline = nil
             scheduleReconnect()
         }
     }

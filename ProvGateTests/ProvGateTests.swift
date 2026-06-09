@@ -317,12 +317,12 @@ struct CredentialSensitiveTests {
 struct CarPlayButtonTests {
     let specs = CarPlaySceneDelegate.buttonSpecs()
 
-    @Test func exactlyThreeButtons() {
-        #expect(specs.count == 3)
+    @Test func exactlyFourButtons() {
+        #expect(specs.count == 4)
     }
 
-    @Test func noPedestrianInCarPlay() {
-        #expect(!specs.contains { $0.title == "Pedestrian" })
+    @Test func pedestrianIsIncluded() {
+        #expect(specs.contains { $0.title == "Pedestrian" })
     }
 
     @Test func leftButtonUsesOutsidePerspective() {
@@ -353,7 +353,8 @@ struct CarPlayButtonTests {
         #expect(directional.allSatisfy { !$0.prominent })
     }
 
-    @Test func fullOpenIsLast() {
-        #expect(specs.last?.title == "Full Open")
+    @Test func layoutOrderIsPedestrianFullOpenLeftRight() {
+        let titles = specs.map(\.title)
+        #expect(titles == ["Pedestrian", "Full Open", "Left", "Right"])
     }
 }
