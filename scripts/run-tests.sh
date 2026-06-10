@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the full ProvGateTests suite (unit + integration).
+# Run the full ProvGateTests suite (unit + integration). [ci-test v3]
 #
 # Usage:
 #   bash scripts/run-tests.sh              # unit tests only; integration suites auto-skip
