@@ -50,7 +50,7 @@ jobs:
           echo "Selected:$SELECTED"
           echo "Booting $SIM_UDID"
           xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
-          xcrun simctl bootstatus "$SIM_UDID" -b || true
+          xcrun simctl bootstatus "$SIM_UDID" -b >/dev/null 2>&1 || true
           echo "SIMULATOR_UDID=$SIM_UDID" >> "$GITHUB_ENV"
 
       - name: Configure integration credentials

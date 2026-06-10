@@ -50,8 +50,14 @@ fi
 # assertion messages and stack traces are visible in CI without wading through the
 # full build log on a pass.
 LOG=$(mktemp /tmp/xcodebuild-XXXXXX.log)
-trap 'rm -f "$LOG"' EXIT
 
+# Heartbeat: prints a timestamped line every 15 s so CI logs show the job is alive
+# during the silent SPM package-download phase (can take 1–2 min on cold runners).
+( secs=0; while true; do sleep 15; secs=$((secs+15)); printf '  … still waiting (%ds)\n' $secs; done ) &
+HEARTBEAT_PID=$!
+trap 'kill "$HEARTBEAT_PID" 2>/dev/null; rm -f "$LOG"' EXIT
+
+echo "Launching xcodebuild…"
 set +e
 xcodebuild test \
     -project ProvGate.xcodeproj \
@@ -63,6 +69,8 @@ xcodebuild test \
         "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|\*\* TEST|SwiftDriverJobDiscovery|Resolve Package Graph|Resolved source packages|Prepare packages|note: Building|error:"
 XCODE_STATUS="${PIPESTATUS[0]}"
 set -e
+
+kill "$HEARTBEAT_PID" 2>/dev/null || true
 
 if [ "$XCODE_STATUS" -ne 0 ]; then
     echo ""
