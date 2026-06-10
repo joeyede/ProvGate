@@ -45,15 +45,29 @@ if [[ "${1:-}" == "--with-env" ]]; then
     xcrun simctl spawn booted launchctl setenv PROVGATE_TEST_PASSWORD "${PROVGATE_TEST_PASSWORD:-}"
 fi
 
-# Run xcodebuild and filter its output, but propagate xcodebuild's exit code.
-# `|| true` would silently mask failures, so we capture PIPESTATUS explicitly.
+# Run xcodebuild, stream filtered progress, and propagate xcodebuild's exit code.
+# Full output is saved to a temp log; on failure the last 150 lines are printed so
+# assertion messages and stack traces are visible in CI without wading through the
+# full build log on a pass.
+LOG=$(mktemp /tmp/xcodebuild-XXXXXX.log)
+trap 'rm -f "$LOG"' EXIT
+
 set +e
 xcodebuild test \
     -project ProvGate.xcodeproj \
     -scheme ProvGate \
     -destination "$DESTINATION" \
     -only-testing:ProvGateTests \
-    2>&1 | grep -E "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|error:"
+    ${RESULT_BUNDLE_PATH:+-resultBundlePath "$RESULT_BUNDLE_PATH"} \
+    2>&1 | tee "$LOG" | grep --line-buffered -E \
+        "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|\*\* TEST|error:"
 XCODE_STATUS="${PIPESTATUS[0]}"
 set -e
+
+if [ "$XCODE_STATUS" -ne 0 ]; then
+    echo ""
+    echo "=== xcodebuild output (last 150 lines) ==="
+    tail -150 "$LOG"
+fi
+
 [ "$XCODE_STATUS" -eq 0 ]
