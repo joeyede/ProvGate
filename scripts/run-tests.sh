@@ -60,7 +60,7 @@ xcodebuild test \
     -only-testing:ProvGateTests \
     ${RESULT_BUNDLE_PATH:+-resultBundlePath "$RESULT_BUNDLE_PATH"} \
     2>&1 | tee "$LOG" | grep --line-buffered -E \
-        "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|\*\* TEST|SwiftDriverJobDiscovery|error:"
+        "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|\*\* TEST|SwiftDriverJobDiscovery|Resolve Package Graph|Resolved source packages|Prepare packages|note: Building|error:"
 XCODE_STATUS="${PIPESTATUS[0]}"
 set -e
 
