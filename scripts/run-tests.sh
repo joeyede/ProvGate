@@ -55,7 +55,7 @@ LOG=$(mktemp /tmp/xcodebuild-XXXXXX.log)
 # during the silent SPM package-download phase (can take 1–2 min on cold runners).
 ( secs=0; while true; do sleep 15; secs=$((secs+15)); printf '  … still waiting (%ds)\n' $secs; done ) &
 HEARTBEAT_PID=$!
-trap 'kill "$HEARTBEAT_PID" 2>/dev/null; rm -f "$LOG"' EXIT
+trap 'kill "$HEARTBEAT_PID" 2>/dev/null; wait "$HEARTBEAT_PID" 2>/dev/null; rm -f "$LOG"' EXIT
 
 echo "Launching xcodebuild…"
 set +e
@@ -70,7 +70,7 @@ xcodebuild test \
 XCODE_STATUS="${PIPESTATUS[0]}"
 set -e
 
-kill "$HEARTBEAT_PID" 2>/dev/null || true
+kill "$HEARTBEAT_PID" 2>/dev/null; wait "$HEARTBEAT_PID" 2>/dev/null || true
 
 if [ "$XCODE_STATUS" -ne 0 ]; then
     echo ""
