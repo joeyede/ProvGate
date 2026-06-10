@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the full ProvGateTests suite (unit + integration).
+# Run the full ProvGateTests suite (unit + integration). [ci-test v3]
 #
 # Usage:
 #   bash scripts/run-tests.sh              # unit tests only; integration suites auto-skip
@@ -45,15 +45,37 @@ if [[ "${1:-}" == "--with-env" ]]; then
     xcrun simctl spawn booted launchctl setenv PROVGATE_TEST_PASSWORD "${PROVGATE_TEST_PASSWORD:-}"
 fi
 
-# Run xcodebuild and filter its output, but propagate xcodebuild's exit code.
-# `|| true` would silently mask failures, so we capture PIPESTATUS explicitly.
+# Run xcodebuild, stream filtered progress, and propagate xcodebuild's exit code.
+# Full output is saved to a temp log; on failure the last 150 lines are printed so
+# assertion messages and stack traces are visible in CI without wading through the
+# full build log on a pass.
+LOG=$(mktemp /tmp/xcodebuild-XXXXXX)
+
+# Heartbeat: prints a timestamped line every 15 s so CI logs show the job is alive
+# during the silent SPM package-download phase (can take 1–2 min on cold runners).
+( secs=0; while true; do sleep 15; secs=$((secs+15)); printf '  … still waiting (%ds)\n' $secs; done ) &
+HEARTBEAT_PID=$!
+trap 'kill "$HEARTBEAT_PID" 2>/dev/null || true; wait "$HEARTBEAT_PID" 2>/dev/null || true; rm -f "$LOG"' EXIT
+
+echo "Launching xcodebuild…"
 set +e
 xcodebuild test \
     -project ProvGate.xcodeproj \
     -scheme ProvGate \
     -destination "$DESTINATION" \
     -only-testing:ProvGateTests \
-    2>&1 | grep -E "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|error:"
+    ${RESULT_BUNDLE_PATH:+-resultBundlePath "$RESULT_BUNDLE_PATH"} \
+    2>&1 | tee "$LOG" | grep --line-buffered -E \
+        "✔ Test|✘ Test|✔ Suite|✘ Suite|Test run with|\*\* TEST|SwiftDriverJobDiscovery|Resolve Package Graph|Resolved source packages|Prepare packages|note: Building|error:"
 XCODE_STATUS="${PIPESTATUS[0]}"
 set -e
+
+kill "$HEARTBEAT_PID" 2>/dev/null || true; wait "$HEARTBEAT_PID" 2>/dev/null || true
+
+if [ "$XCODE_STATUS" -ne 0 ]; then
+    echo ""
+    echo "=== xcodebuild output (last 150 lines) ==="
+    tail -150 "$LOG"
+fi
+
 [ "$XCODE_STATUS" -eq 0 ]
