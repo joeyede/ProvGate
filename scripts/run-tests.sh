@@ -49,7 +49,7 @@ fi
 # Full output is saved to a temp log; on failure the last 150 lines are printed so
 # assertion messages and stack traces are visible in CI without wading through the
 # full build log on a pass.
-LOG=$(mktemp /tmp/xcodebuild-XXXXXX.log)
+LOG=$(mktemp /tmp/xcodebuild-XXXXXX)
 
 # Heartbeat: prints a timestamped line every 15 s so CI logs show the job is alive
 # during the silent SPM package-download phase (can take 1–2 min on cold runners).
