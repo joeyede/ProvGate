@@ -22,11 +22,11 @@ final class MQTTManager: NSObject {
     private(set) var notificationMessage: String? = nil
     private(set) var gateStatus: String? = nil
     private(set) var gateOnline: Bool? = nil
-    struct CommandResult { let action: String; let success: Bool }
+    struct CommandResult { let action: String; let isOutsideView: Bool; let success: Bool }
     private(set) var lastCommandResult: CommandResult? = nil
 
     @ObservationIgnored private var client: CocoaMQTT5?
-    @ObservationIgnored private var pendingCommands: [String: String] = [:]
+    @ObservationIgnored private var pendingCommands: [String: (action: String, isOutsideView: Bool)] = [:]
     @ObservationIgnored private let store: CredentialsStore
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private var connectionTimeoutTask: Task<Void, Never>?
@@ -114,7 +114,7 @@ final class MQTTManager: NSObject {
         lastCommandResult = nil
 
         let correlationId = UUID().uuidString
-        pendingCommands[correlationId] = action
+        pendingCommands[correlationId] = (action: action, isOutsideView: isOutsideView)
 
         guard let payload = try? JSONEncoder().encode(GateCommand(action: actual)),
               let payloadString = String(data: payload, encoding: .utf8) else { return }
@@ -340,11 +340,11 @@ extension MQTTManager: CocoaMQTT5Delegate {
                   let correlationId = String(bytes: corrData, encoding: .utf8)
             else { return }
             let success = (json["status"] as? String) == "success"
-            let action = pendingCommands.removeValue(forKey: correlationId)
-            if let action {
-                statusMessage = "\(action.capitalized): \(success ? "Success" : "Failed")"
-                lastCommandResult = CommandResult(action: action, success: success)
-                clearSending(for: action)
+            let pending = pendingCommands.removeValue(forKey: correlationId)
+            if let pending {
+                statusMessage = "\(pending.action.capitalized): \(success ? "Success" : "Failed")"
+                lastCommandResult = CommandResult(action: pending.action, isOutsideView: pending.isOutsideView, success: success)
+                clearSending(for: pending.action)
             }
         }
     }

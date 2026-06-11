@@ -325,14 +325,14 @@ struct CarPlayButtonTests {
         #expect(specs.contains { $0.title == "Pedestrian" })
     }
 
-    @Test func leftButtonUsesOutsidePerspective() {
+    @Test func leftButtonActionIsLeft() {
         let spec = specs.first { $0.title == "Left" }!
-        #expect(spec.action == "right")
+        #expect(spec.action == "left")
     }
 
-    @Test func rightButtonUsesOutsidePerspective() {
+    @Test func rightButtonActionIsRight() {
         let spec = specs.first { $0.title == "Right" }!
-        #expect(spec.action == "left")
+        #expect(spec.action == "right")
     }
 
     @Test func fullOpenActionIsCorrect() {

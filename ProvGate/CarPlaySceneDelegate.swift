@@ -122,8 +122,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         [
             ("Pedestrian", "figure.walk",                        "pedestrian",                                                      false),
             ("Full Open",  "arrow.up.left.and.arrow.down.right", "full",                                                            true),
-            ("Left",       "arrow.left",                         GateHelpers.resolvedAction("left",  isOutsideView: isOutsideView), false),
-            ("Right",      "arrow.right",                        GateHelpers.resolvedAction("right", isOutsideView: isOutsideView), false),
+            ("Left",       "arrow.left",                         "left",                                                            false),
+            ("Right",      "arrow.right",                        "right",                                                           false),
         ]
     }
 
@@ -193,7 +193,11 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 body      = title + "\u{2026}"
                 bodyColor = .label
             } else if let result = lastResult {
-                heading   = result.action.capitalized
+                if result.action == "left" || result.action == "right" {
+                    heading = (result.isOutsideView ? "O" : "I") + (result.action == "left" ? "L" : "R")
+                } else {
+                    heading = specs.first(where: { $0.action == result.action })?.title ?? result.action.capitalized
+                }
                 body      = result.success ? "Success" : "Failed"
                 bodyColor = result.success ? .systemGreen : .systemRed
             } else {
